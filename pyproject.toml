@@ -1,0 +1,6 @@
+[project]
+name = "engineer-doc"
+version = "0.1.0"
+description = "RAG system for engineering docs (FAISS + Claude/OpenAI + Streamlit)"
+requires-python = ">=3.11"
+dependencies = []
