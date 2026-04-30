@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# uv / venv
+.venv/
+.python-version
+
+# Project artifacts
+sample_docs/
+rag_index/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Project-local instructions (not for upstream)
+CLAUDE.md
