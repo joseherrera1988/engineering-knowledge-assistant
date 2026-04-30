@@ -3,4 +3,18 @@ name = "engineer-doc"
 version = "0.1.0"
 description = "RAG system for engineering docs (FAISS + Claude/OpenAI + Streamlit)"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "anthropic>=0.97.0",
+    "faiss-cpu>=1.13.2",
+    "numpy>=2.4.4",
+    "sentence-transformers>=5.4.1",
+    "streamlit>=1.57.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.20.2",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.12",
+]
