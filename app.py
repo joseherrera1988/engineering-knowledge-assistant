@@ -93,7 +93,8 @@ def load_documents():
     """Load and index documents"""
     with st.spinner("Loading and indexing documents..."):
         # Create sample documents if they don't exist
-        docs_dir = "/home/claude/sample_docs"
+        from paths import SAMPLE_DOCS_DIR
+        docs_dir = str(SAMPLE_DOCS_DIR)
         if not os.path.exists(docs_dir) or not os.listdir(docs_dir):
             create_sample_documents(docs_dir)
         
