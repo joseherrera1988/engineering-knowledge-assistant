@@ -287,7 +287,7 @@ Common status codes:
 API requests are limited to 100 per minute per API key.
 """
     
-    with open(f"{directory}/api_docs.md", "w") as f:
+    with open(f"{directory}/api_docs.md", "w", encoding="utf-8") as f:
         f.write(api_doc)
     
     # System Architecture
@@ -354,7 +354,7 @@ Tracks usage, performance metrics, and user analytics.
 - Infrastructure as Code: Terraform
 """
     
-    with open(f"{directory}/architecture.md", "w") as f:
+    with open(f"{directory}/architecture.md", "w", encoding="utf-8") as f:
         f.write(arch_doc)
     
     # Database Schema
@@ -431,7 +431,7 @@ CREATE TABLE queries (
 - Timestamp indexes for fast querying of recent documents
 """
     
-    with open(f"{directory}/database_schema.md", "w") as f:
+    with open(f"{directory}/database_schema.md", "w", encoding="utf-8") as f:
         f.write(db_schema)
     
     # Python code sample
@@ -505,7 +505,7 @@ class VectorSearch:
             self.documents = pickle.load(f)
 '''
     
-    with open(f"{directory}/vector_search.py", "w") as f:
+    with open(f"{directory}/vector_search.py", "w", encoding="utf-8") as f:
         f.write(python_code)
     
     print(f"✓ Sample documents created in {directory}")
