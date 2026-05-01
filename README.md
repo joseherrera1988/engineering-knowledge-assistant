@@ -1,8 +1,8 @@
-# 📚 RAG System - Retrieval-Augmented Generation
+# RAG System - Retrieval-Augmented Generation
 
 A production-ready RAG (Retrieval-Augmented Generation) system that combines semantic search with LLM-powered reasoning for intelligent document analysis.
 
-## 🎯 Features
+## Features
 
 ### Core Capabilities
 - **Semantic Search**: FAISS-based vector indexing for fast similarity search
@@ -19,36 +19,7 @@ A production-ready RAG (Retrieval-Augmented Generation) system that combines sem
 - **Vector Store Persistence**: Save and load FAISS indexes efficiently
 - **Interactive UI**: Streamlit-based interface for easy exploration
 
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     User Interface (Streamlit)              │
-│  [Q&A] [Summarize] [SQL Query] [Chat] [Search Parameters]  │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────┐
-│                    RAG Agent (Multi-tool)                   │
-│  • Question Answering  • Summarization  • SQL Generation    │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────┐
-│              Vector Store & Retrieval Layer                 │
-│  • FAISS Index  • Semantic Reranking  • Hybrid Retrieval    │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────┐
-│            Document Ingestion & Processing                  │
-│  • Markdown Chunking  • Code Analysis  • Text Processing    │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                    ┌────────▼────────┐
-                    │  Document Store │
-                    │  (Files/PDFs)   │
-                    └─────────────────┘
-```
-
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 - Python 3.8+
@@ -71,7 +42,7 @@ export OPENAI_API_KEY="your-api-key-here"
 export ANTHROPIC_API_KEY="your-anthropic-key-here"
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Full System Initialization + UI
 ```bash
@@ -98,7 +69,7 @@ python main.py --mode ui
 streamlit run app.py
 ```
 
-## 📖 Usage Examples
+## Usage Examples
 
 ### In Python Code
 
@@ -137,7 +108,7 @@ for source in response.sources:
 5. **Generate SQL**: Use "SQL Query" tab for database queries
 6. **Multi-turn Chat**: Use "Chat" tab for conversations
 
-## 🔧 Configuration
+## Configuration
 
 ### Search Parameters (in UI)
 - **Number of documents to retrieve** (1-10): Controls how much context is passed to the LLM
@@ -159,7 +130,7 @@ vector_store = FAISSVectorStore(
 )
 ```
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 rag-system/
@@ -180,7 +151,7 @@ rag-system/
 └── README.md              # This file
 ```
 
-## 🧠 How It Works
+## How It Works
 
 ### 1. Document Ingestion
 - **Smart Chunking**: Intelligent splitting based on document type
@@ -210,7 +181,7 @@ rag-system/
 - **SQL Generation**: Creates database queries from schema
 - All responses include source attribution
 
-## 🔍 Advanced Features
+## Advanced Features
 
 ### Semantic Reranking
 Combines multiple relevance signals:
@@ -240,7 +211,7 @@ response2 = agent.multi_turn_conversation("Follow-up question")
 # Conversation history is preserved
 ```
 
-## 📊 API Reference
+## API Reference
 
 ### DocumentIngester
 ```python
@@ -267,7 +238,7 @@ class RAGAgent:
     def clear_history() -> None
 ```
 
-## 🎨 Customization
+## Customization
 
 ### Add Your Own Documents
 
@@ -311,7 +282,7 @@ ingester = DocumentIngester(chunk_size=1024, overlap=200)
 ingester = DocumentIngester(chunk_size=256, overlap=50)
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### No documents found
 - Ensure sample documents are created in `/home/claude/sample_docs`
@@ -394,33 +365,6 @@ spec:
           key: openai
 ```
 
-## 📚 Further Reading
-
-- [FAISS Documentation](https://github.com/facebookresearch/faiss)
-- [Sentence Transformers](https://www.sbert.net/)
-- [Retrieval-Augmented Generation](https://arxiv.org/abs/2005.11401)
-- [Prompt Engineering Guide](https://github.com/dair-ai/Prompt-Engineering-Guide)
-
 ## 📝 License
 
 This project is provided as-is for educational and development purposes.
-
-## 🤝 Contributing
-
-Contributions welcome! Areas for improvement:
-- Additional document type support (images, tables, PDFs)
-- Advanced reranking strategies
-- Caching layer for better performance
-- A/B testing framework for prompt optimization
-- Evaluation metrics for retrieval quality
-
-## 📧 Support
-
-For issues, questions, or suggestions:
-- Check the troubleshooting section
-- Review the code comments for implementation details
-- Experiment with different configurations
-
----
-
-**Happy querying! 🎉**
