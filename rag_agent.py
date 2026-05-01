@@ -1,7 +1,6 @@
-"""
-RAG Agent with LLM-powered tools
-Uses Claude API for intelligent reasoning over retrieved context
-"""
+"""RAG Agent with LLM-powered tools using the OpenAI SDK."""
+
+from __future__ import annotations
 
 import os
 from dataclasses import dataclass
@@ -11,13 +10,13 @@ from openai import OpenAI
 
 from vector_store import FAISSVectorStore, RetrievalResult
 
-# Initialize Claude client
-client = OpenAI(api_key=os.environ.get("ANTHROPIC_API_KEY", "sk-ant-test"))
+DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_MAX_TOKENS = 1024
 
 
 @dataclass
 class AgentResponse:
-    """Response from RAG agent"""
+    """Response from RAG agent."""
 
     answer: str
     sources: list[dict[str, Any]]
@@ -25,25 +24,27 @@ class AgentResponse:
     confidence: float
 
 
-class RAGAgent:
-    """Agent that reasons over retrieved documents using Claude"""
+def _default_client() -> OpenAI:
+    return OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "sk-test"))
 
-    def __init__(self, vector_store: FAISSVectorStore):
+
+class RAGAgent:
+    """Agent that reasons over retrieved documents using OpenAI."""
+
+    def __init__(
+        self,
+        vector_store: FAISSVectorStore,
+        client: Any | None = None,
+        model: str = DEFAULT_MODEL,
+        max_tokens: int = DEFAULT_MAX_TOKENS,
+    ) -> None:
         self.vector_store = vector_store
-        self.conversation_history = []
+        self.client: Any = client if client is not None else _default_client()
+        self.model = model
+        self.max_tokens = max_tokens
+        self.conversation_history: list[dict[str, str]] = []
 
     def query(self, user_query: str, k: int = 5) -> AgentResponse:
-        """
-        Process a user query with RAG
-
-        Args:
-            user_query: User's question
-            k: Number of documents to retrieve
-
-        Returns:
-            AgentResponse with answer and sources
-        """
-        # Retrieve relevant documents
         retrieved_docs = self.vector_store.semantic_search_with_reranking(
             user_query, k=min(k, 10), rerank_top_k=k
         )
@@ -56,24 +57,19 @@ class RAGAgent:
                 confidence=0.0,
             )
 
-        # Format context for LLM
         context = self._format_context(retrieved_docs)
-
-        # Determine best tool to use
         tool = self._select_tool(user_query)
 
-        # Generate response using appropriate tool
-        if "summarize" in user_query.lower() or tool == "summarization":
+        if tool == "summarization":
             answer = self._summarize(context, user_query)
             tool_used = "summarization"
-        elif "sql" in user_query.lower() or tool == "sql_generation":
+        elif tool == "sql_generation":
             answer = self._generate_sql(context, user_query)
             tool_used = "sql_generation"
         else:
             answer = self._answer_question(context, user_query)
             tool_used = "question_answering"
 
-        # Format sources
         sources = [
             {
                 "file": doc.source,
@@ -84,183 +80,109 @@ class RAGAgent:
             for doc in retrieved_docs
         ]
 
-        # Calculate confidence based on top result similarity
-        confidence = retrieved_docs[0].similarity_score if retrieved_docs else 0.0
-
+        confidence = retrieved_docs[0].similarity_score
         return AgentResponse(
             answer=answer, sources=sources, tool_used=tool_used, confidence=confidence
         )
 
     def _select_tool(self, query: str) -> str:
-        """Determine which tool to use based on query"""
-        query_lower = query.lower()
-
-        if any(word in query_lower for word in ["summarize", "summary", "overview"]):
+        q = query.lower()
+        if any(word in q for word in ["summarize", "summary", "overview"]):
             return "summarization"
-        elif any(word in query_lower for word in ["sql", "query", "database"]):
+        if any(word in q for word in ["sql", "query", "database"]):
             return "sql_generation"
-        else:
-            return "question_answering"
+        return "question_answering"
 
     def _format_context(self, documents: list[RetrievalResult]) -> str:
-        """Format retrieved documents into context string"""
-        context_parts = []
-
-        for i, doc in enumerate(documents, 1):
-            source_indicator = f"[Source {i}: {doc.source}]"
-            context_parts.append(f"{source_indicator}\n{doc.content}")
-
-        return "\n\n".join(context_parts)
+        return "\n\n".join(
+            f"[Source {i}: {doc.source}]\n{doc.content}"
+            for i, doc in enumerate(documents, 1)
+        )
 
     def _answer_question(self, context: str, question: str) -> str:
-        """Answer a question using retrieved context"""
-        prompt = f"""You are a helpful assistant answering questions about technical documentation.
-
-Context from documents:
-{context}
-
-Question: {question}
-
-Provide a clear, accurate answer based on the context above. If the context doesn't contain the answer, say so honestly."""
-
-        response = self._call_claude(prompt)
-        return response
+        prompt = (
+            "You are a helpful assistant answering questions about technical documentation.\n\n"
+            f"Context from documents:\n{context}\n\n"
+            f"Question: {question}\n\n"
+            "Provide a clear, accurate answer based on the context above. "
+            "If the context doesn't contain the answer, say so honestly."
+        )
+        return self._call_llm(prompt)
 
     def _summarize(self, context: str, query: str) -> str:
-        """Summarize retrieved documents"""
-        specific_topic = query.replace("summarize", "").replace("summary", "").strip()
-
-        prompt = f"""You are a technical documentation expert. Provide a concise summary of the following documents.
-
-Documents:
-{context}
-
-Focus: {specific_topic if specific_topic else "all key points"}
-
-Provide a clear, well-organized summary that captures the essential information. Format with headers and bullet points where appropriate."""
-
-        response = self._call_claude(prompt)
-        return response
+        topic = query.replace("summarize", "").replace("summary", "").strip()
+        prompt = (
+            "You are a technical documentation expert. "
+            "Provide a concise summary of the following documents.\n\n"
+            f"Documents:\n{context}\n\n"
+            f"Focus: {topic if topic else 'all key points'}\n\n"
+            "Provide a clear, well-organized summary. Use headers and bullet points where appropriate."
+        )
+        return self._call_llm(prompt)
 
     def _generate_sql(self, context: str, query: str) -> str:
-        """Generate SQL queries based on documentation"""
-        prompt = f"""You are an SQL expert. Based on the database schema and documentation below, generate a SQL query to fulfill the request.
+        prompt = (
+            "You are an SQL expert. Based on the database schema and documentation below, "
+            "generate a SQL query to fulfill the request.\n\n"
+            f"Documentation and Schema:\n{context}\n\n"
+            f"Request: {query}\n\n"
+            "Provide:\n1. The SQL query with proper formatting\n"
+            "2. A brief explanation of what the query does\n3. Any assumptions made\n\n"
+            "Format the SQL code in a markdown code block with ```sql markers."
+        )
+        return self._call_llm(prompt)
 
-Documentation and Schema:
-{context}
-
-Request: {query}
-
-Provide:
-1. The SQL query with proper formatting
-2. A brief explanation of what the query does
-3. Any assumptions made
-
-Format the SQL code in a markdown code block with ```sql markers."""
-
-        response = self._call_claude(prompt)
-        return response
-
-    def _call_claude(self, prompt: str) -> str:
-        """Call Claude API with fallback for testing"""
+    def _call_llm(self, prompt: str) -> str:
         try:
-            # Use Claude 3.5 Sonnet for better reasoning
-            response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=1024,
+            response = self.client.chat.completions.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return response.content[0].text
+            content = response.choices[0].message.content
+            return content if isinstance(content, str) else ""
         except Exception:
-            # Fallback for demo/testing
             return self._generate_demo_response(prompt)
 
     def _generate_demo_response(self, prompt: str) -> str:
-        """Generate a demo response when API is unavailable"""
-        if "summarize" in prompt.lower() or "summary" in prompt.lower():
-            return """
-## Summary
-
-This documentation covers several key aspects:
-
-**Core Concepts:**
-- Document management and versioning systems
-- API authentication using Bearer tokens
-- RESTful endpoint design with standard CRUD operations
-
-**Technical Details:**
-- The system uses microservices architecture
-- PostgreSQL for primary data storage with Redis caching
-- FAISS and Elasticsearch for search capabilities
-- Python/FastAPI for backend services
-
-**Key Features:**
-- Rate limiting (100 requests per minute)
-- Full-text search with semantic capabilities
-- Vector-based similarity search using embeddings
-- Comprehensive error handling with standard HTTP status codes
-
-**Database Schema:**
-The schema includes tables for documents, chunks, users, and queries with appropriate indexes for performance optimization.
-"""
-        elif "sql" in prompt.lower():
-            return """
-Based on the documentation, here's a SQL query example:
-
-```sql
-SELECT 
-    d.id,
-    d.title,
-    COUNT(dc.id) as chunk_count,
-    d.created_at,
-    d.created_by
-FROM documents d
-LEFT JOIN document_chunks dc ON d.id = dc.document_id
-WHERE d.is_deleted = FALSE
-GROUP BY d.id, d.title, d.created_at, d.created_by
-ORDER BY d.created_at DESC
-LIMIT 10;
-```
-
-**Explanation:**
-This query retrieves the 10 most recent documents along with the number of chunks each document is divided into. It joins the documents table with document_chunks and uses LEFT JOIN to include documents even if they have no chunks.
-"""
-        else:
-            return """
-Based on the documentation provided, I can answer your question:
-
-The system uses a microservices architecture with several key components:
-
-1. **Document Service** - Handles document management, versioning, and storage
-2. **Search Service** - Provides both semantic and full-text search using FAISS and Elasticsearch
-3. **Analytics Service** - Tracks usage and performance metrics
-
-The API uses Bearer token authentication and enforces rate limiting at 100 requests per minute. All endpoints follow RESTful conventions with standard HTTP status codes.
-
-For data storage, the system uses PostgreSQL as the primary database with Redis for caching. Vector embeddings are stored in a dedicated table with HNSW indexing for efficient similarity searches.
-"""
+        p = prompt.lower()
+        if "summarize" in p or "summary" in p:
+            return (
+                "## Summary\n\n"
+                "- Document management with versioning\n"
+                "- Bearer-token authenticated REST API\n"
+                "- Microservices: PostgreSQL + Redis + FAISS/Elasticsearch\n"
+                "- Rate limited to 100 req/min\n"
+            )
+        if "sql" in p:
+            return (
+                "```sql\n"
+                "SELECT id, title, created_at FROM documents\n"
+                "WHERE is_deleted = FALSE\n"
+                "ORDER BY created_at DESC LIMIT 10;\n"
+                "```\n"
+                "Returns the 10 most recent non-deleted documents."
+            )
+        return (
+            "Based on the documentation, the system uses a microservices architecture "
+            "with Document, Search, and Analytics services. Authentication is via Bearer "
+            "tokens with a 100 req/min rate limit."
+        )
 
     def multi_turn_conversation(self, user_input: str) -> AgentResponse:
-        """Support multi-turn conversations"""
-        # Add to history
         self.conversation_history.append({"role": "user", "content": user_input})
-
-        # Process query
         response = self.query(user_input)
-
-        # Add response to history
         self.conversation_history.append({"role": "assistant", "content": response.answer})
-
         return response
 
     def clear_history(self) -> None:
-        """Clear conversation history"""
         self.conversation_history = []
 
     def get_stats(self) -> dict[str, Any]:
-        """Get agent statistics"""
         return {
             "vector_store_stats": self.vector_store.get_document_stats(),
             "conversation_turns": len(self.conversation_history),
-            "total_queries": len([h for h in self.conversation_history if h["role"] == "user"]),
+            "total_queries": sum(
+                1 for h in self.conversation_history if h["role"] == "user"
+            ),
         }
