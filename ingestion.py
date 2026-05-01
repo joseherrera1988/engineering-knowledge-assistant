@@ -5,7 +5,6 @@ Handles PDF, Markdown, and text files with intelligent chunking
 
 import os
 import re
-from typing import List, Tuple
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,6 +12,7 @@ from pathlib import Path
 @dataclass
 class Document:
     """Represents a document chunk with metadata"""
+
     content: str
     source: str
     chunk_id: int
@@ -22,16 +22,16 @@ class Document:
 
 class DocumentIngester:
     """Ingests and chunks documents intelligently"""
-    
+
     def __init__(self, chunk_size: int = 512, overlap: int = 100):
         self.chunk_size = chunk_size
         self.overlap = overlap
-    
-    def ingest_directory(self, directory: str) -> List[Document]:
+
+    def ingest_directory(self, directory: str) -> list[Document]:
         """Ingest all documents from a directory"""
         documents = []
         doc_id = 0
-        
+
         for file_path in Path(directory).rglob("*"):
             if file_path.suffix.lower() in [".txt", ".md", ".py", ".js", ".sql"]:
                 chunks = self.ingest_file(str(file_path))
@@ -39,161 +39,166 @@ class DocumentIngester:
                     chunk.chunk_id = doc_id
                     documents.append(chunk)
                     doc_id += 1
-        
+
         return documents
-    
-    def ingest_file(self, file_path: str) -> List[Document]:
+
+    def ingest_file(self, file_path: str) -> list[Document]:
         """Ingest a single file and return chunks"""
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
         except Exception as e:
             print(f"Error reading {file_path}: {e}")
             return []
-        
+
         file_type = Path(file_path).suffix.lower()
-        
+
         if file_type == ".md":
             return self._chunk_markdown(content, file_path)
         elif file_type == ".py" or file_type == ".js":
             return self._chunk_code(content, file_path)
         else:
             return self._chunk_text(content, file_path)
-    
-    def _chunk_markdown(self, content: str, source: str) -> List[Document]:
+
+    def _chunk_markdown(self, content: str, source: str) -> list[Document]:
         """Chunk markdown by headers and paragraphs"""
         documents = []
-        lines = content.split('\n')
-        
+        lines = content.split("\n")
+
         current_chunk = []
         chunk_id = 0
         start_line = 0
-        
+
         for i, line in enumerate(lines):
             current_chunk.append(line)
-            
+
             # Split on headers or when chunk size exceeded
-            is_header = line.startswith('#')
-            chunk_text = '\n'.join(current_chunk).strip()
-            
+            is_header = line.startswith("#")
+            chunk_text = "\n".join(current_chunk).strip()
+
             if (is_header and current_chunk != [line]) or len(chunk_text) > self.chunk_size:
                 if current_chunk and current_chunk != [line]:
-                    chunk_text = '\n'.join(current_chunk[:-1] if is_header else current_chunk).strip()
+                    chunk_text = "\n".join(
+                        current_chunk[:-1] if is_header else current_chunk
+                    ).strip()
                     if chunk_text:
-                        documents.append(Document(
-                            content=chunk_text,
-                            source=source,
-                            chunk_id=chunk_id,
-                            start_line=start_line,
-                            end_line=i
-                        ))
+                        documents.append(
+                            Document(
+                                content=chunk_text,
+                                source=source,
+                                chunk_id=chunk_id,
+                                start_line=start_line,
+                                end_line=i,
+                            )
+                        )
                         chunk_id += 1
-                
+
                 current_chunk = [line] if is_header else []
                 start_line = i
-        
+
         # Add final chunk
         if current_chunk:
-            chunk_text = '\n'.join(current_chunk).strip()
+            chunk_text = "\n".join(current_chunk).strip()
             if chunk_text:
-                documents.append(Document(
-                    content=chunk_text,
-                    source=source,
-                    chunk_id=chunk_id,
-                    start_line=start_line,
-                    end_line=len(lines)
-                ))
-        
+                documents.append(
+                    Document(
+                        content=chunk_text,
+                        source=source,
+                        chunk_id=chunk_id,
+                        start_line=start_line,
+                        end_line=len(lines),
+                    )
+                )
+
         return documents
-    
-    def _chunk_code(self, content: str, source: str) -> List[Document]:
+
+    def _chunk_code(self, content: str, source: str) -> list[Document]:
         """Chunk code by functions/classes"""
         documents = []
-        lines = content.split('\n')
-        
+        lines = content.split("\n")
+
         current_chunk = []
         chunk_id = 0
         start_line = 0
-        
+
         for i, line in enumerate(lines):
             current_chunk.append(line)
-            
+
             # Split on function/class definitions or size limit
-            is_def = line.strip().startswith(('def ', 'class ', 'async def ', 'function ', 'const ', 'let '))
-            chunk_text = '\n'.join(current_chunk).strip()
-            
+            is_def = line.strip().startswith(
+                ("def ", "class ", "async def ", "function ", "const ", "let ")
+            )
+            chunk_text = "\n".join(current_chunk).strip()
+
             if (is_def and len(current_chunk) > 1) or len(chunk_text) > self.chunk_size:
                 if current_chunk and current_chunk != [line]:
-                    chunk_text = '\n'.join(current_chunk[:-1] if is_def else current_chunk).strip()
+                    chunk_text = "\n".join(current_chunk[:-1] if is_def else current_chunk).strip()
                     if chunk_text and len(chunk_text) > 20:
-                        documents.append(Document(
-                            content=chunk_text,
-                            source=source,
-                            chunk_id=chunk_id,
-                            start_line=start_line,
-                            end_line=i
-                        ))
+                        documents.append(
+                            Document(
+                                content=chunk_text,
+                                source=source,
+                                chunk_id=chunk_id,
+                                start_line=start_line,
+                                end_line=i,
+                            )
+                        )
                         chunk_id += 1
-                
+
                 current_chunk = [line] if is_def else []
                 start_line = i
-        
+
         if current_chunk:
-            chunk_text = '\n'.join(current_chunk).strip()
+            chunk_text = "\n".join(current_chunk).strip()
             if chunk_text and len(chunk_text) > 20:
-                documents.append(Document(
-                    content=chunk_text,
-                    source=source,
-                    chunk_id=chunk_id,
-                    start_line=start_line,
-                    end_line=len(lines)
-                ))
-        
+                documents.append(
+                    Document(
+                        content=chunk_text,
+                        source=source,
+                        chunk_id=chunk_id,
+                        start_line=start_line,
+                        end_line=len(lines),
+                    )
+                )
+
         return documents
-    
-    def _chunk_text(self, content: str, source: str) -> List[Document]:
+
+    def _chunk_text(self, content: str, source: str) -> list[Document]:
         """Chunk plain text with overlap"""
         documents = []
-        sentences = re.split(r'(?<=[.!?])\s+', content)
-        
+        sentences = re.split(r"(?<=[.!?])\s+", content)
+
         current_chunk = []
         chunk_id = 0
-        
+
         for sentence in sentences:
             current_chunk.append(sentence)
-            chunk_text = ' '.join(current_chunk)
-            
+            chunk_text = " ".join(current_chunk)
+
             if len(chunk_text) > self.chunk_size:
-                documents.append(Document(
-                    content=chunk_text,
-                    source=source,
-                    chunk_id=chunk_id
-                ))
-                
+                documents.append(Document(content=chunk_text, source=source, chunk_id=chunk_id))
+
                 # Keep overlap
                 overlap_sentences = max(1, len(current_chunk) // 3)
                 current_chunk = current_chunk[-overlap_sentences:]
                 chunk_id += 1
-        
+
         if current_chunk:
-            chunk_text = ' '.join(current_chunk)
+            chunk_text = " ".join(current_chunk)
             if chunk_text:
-                documents.append(Document(
-                    content=chunk_text,
-                    source=source,
-                    chunk_id=chunk_id
-                ))
-        
+                documents.append(Document(content=chunk_text, source=source, chunk_id=chunk_id))
+
         return documents
 
 
 def create_sample_documents(directory: str | None = None) -> None:
     """Create sample engineering documentation"""
     from paths import SAMPLE_DOCS_DIR
+
     if directory is None:
         directory = str(SAMPLE_DOCS_DIR)
     os.makedirs(directory, exist_ok=True)
-    
+
     # API Documentation
     api_doc = """# API Documentation
 
@@ -286,10 +291,10 @@ Common status codes:
 ## Rate Limiting
 API requests are limited to 100 per minute per API key.
 """
-    
+
     with open(f"{directory}/api_docs.md", "w", encoding="utf-8") as f:
         f.write(api_doc)
-    
+
     # System Architecture
     arch_doc = """# System Architecture
 
@@ -353,10 +358,10 @@ Tracks usage, performance metrics, and user analytics.
 - CI/CD: GitHub Actions
 - Infrastructure as Code: Terraform
 """
-    
+
     with open(f"{directory}/architecture.md", "w", encoding="utf-8") as f:
         f.write(arch_doc)
-    
+
     # Database Schema
     db_schema = """# Database Schema
 
@@ -430,10 +435,10 @@ CREATE TABLE queries (
 - Full-text search index on documents.content
 - Timestamp indexes for fast querying of recent documents
 """
-    
+
     with open(f"{directory}/database_schema.md", "w", encoding="utf-8") as f:
         f.write(db_schema)
-    
+
     # Python code sample
     python_code = '''"""
 Vector Search Module
@@ -504,8 +509,8 @@ class VectorSearch:
         with open(f"{path}/documents.pkl", "rb") as f:
             self.documents = pickle.load(f)
 '''
-    
+
     with open(f"{directory}/vector_search.py", "w", encoding="utf-8") as f:
         f.write(python_code)
-    
+
     print(f"✓ Sample documents created in {directory}")
