@@ -11,13 +11,13 @@ import sys
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from ingestion import DocumentIngester, create_sample_documents
+from ingestion import Document, DocumentIngester, create_sample_documents
 from paths import APP_PY, INDEX_DIR, SAMPLE_DOCS_DIR
 from rag_agent import RAGAgent
 from vector_store import FAISSVectorStore
 
 
-def initialize_system():
+def initialize_system() -> tuple[FAISSVectorStore, list[Document]]:
     """Initialize the RAG system"""
     print("=" * 70)
     print("🚀 RAG System Initialization")
@@ -65,7 +65,7 @@ def initialize_system():
     return vector_store, documents
 
 
-def run_demo_queries(agent, queries):
+def run_demo_queries(agent: RAGAgent, queries: list[str]) -> None:
     """Run demo queries to test the system"""
     print("\n" + "=" * 70)
     print("🎯 Demo Queries")
@@ -87,7 +87,7 @@ def run_demo_queries(agent, queries):
         print(f"✓ Sources: {len(response.sources)}")
 
 
-def main():
+def main() -> None:
     """Main entry point"""
     import argparse
 

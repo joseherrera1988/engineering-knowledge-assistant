@@ -33,16 +33,20 @@ class RetrievalResult:
 class SimpleEmbeddingModel:
     """Fallback embedding model using hash-based embeddings"""
 
-    def __init__(self, dimension: int = 384):
+    def __init__(self, dimension: int = 384) -> None:
         self.dimension = dimension
 
-    def encode(self, texts, convert_to_numpy=True, show_progress_bar=False):
-        """Create deterministic embeddings from text"""
-        embeddings = []
+    def encode(
+        self,
+        texts: str | list[str],
+        convert_to_numpy: bool = True,
+        show_progress_bar: bool = False,
+    ) -> np.ndarray[Any, Any]:
+        """Create deterministic embeddings from text."""
+        embeddings: list[np.ndarray[Any, Any]] = []
         text_list = texts if isinstance(texts, list) else [texts]
 
         for text in text_list:
-            # Use hash to generate consistent embeddings
             hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
             np.random.seed(hash_val % (2**31))
             embedding = np.random.randn(self.dimension).astype(np.float32)
@@ -53,14 +57,15 @@ class SimpleEmbeddingModel:
             return embeddings[0]
         return np.array(embeddings)
 
-    def get_sentence_embedding_dimension(self):
+    def get_sentence_embedding_dimension(self) -> int:
         return self.dimension
 
 
 class FAISSVectorStore:
     """FAISS-based vector store for semantic search"""
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2", use_gpu: bool = False):
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2", use_gpu: bool = False) -> None:
+        self.model: Any
         if HAS_SENTENCE_TRANSFORMERS:
             try:
                 self.model = SentenceTransformer(model_name)
@@ -73,8 +78,8 @@ class FAISSVectorStore:
             self.model = SimpleEmbeddingModel()
             self.embedding_dim = 384
 
-        self.index = None
-        self.documents = []
+        self.index: Any | None = None
+        self.documents: list[Any] = []
         self.use_gpu = use_gpu
 
     def add_documents(self, documents: list[Any]) -> None:
@@ -204,7 +209,7 @@ class HybridRetriever:
         )
 
     def retrieve_with_filters(
-        self, query: str, k: int = 5, sources: list[str] = None
+        self, query: str, k: int = 5, sources: list[str] | None = None
     ) -> list[RetrievalResult]:
         """Retrieve with optional source filtering"""
         results = self.retrieve(query, k=k * 2)
