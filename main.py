@@ -13,8 +13,9 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ingestion import DocumentIngester, create_sample_documents
-from vector_store import FAISSVectorStore
+from paths import APP_PY, INDEX_DIR, SAMPLE_DOCS_DIR
 from rag_agent import RAGAgent
+from vector_store import FAISSVectorStore
 
 
 def initialize_system():
@@ -25,7 +26,7 @@ def initialize_system():
     
     # Step 1: Create sample documents
     print("\n[1/4] Creating sample documents...")
-    docs_dir = "/home/claude/sample_docs"
+    docs_dir = str(SAMPLE_DOCS_DIR)
     create_sample_documents(docs_dir)
     
     # Step 2: Ingest documents
@@ -41,7 +42,7 @@ def initialize_system():
     
     # Step 4: Save index
     print("\n[4/4] Saving index...")
-    index_dir = "/home/claude/rag_index"
+    index_dir = str(INDEX_DIR)
     vector_store.save(index_dir)
     print(f"  ✓ Index saved to {index_dir}")
     
@@ -106,7 +107,7 @@ def main():
         else:
             # Load from saved index
             vector_store = FAISSVectorStore()
-            vector_store.load("/home/claude/rag_index")
+            vector_store.load(str(INDEX_DIR))
             agent = RAGAgent(vector_store)
         
         demo_queries = [
@@ -127,7 +128,7 @@ def main():
         
         # Launch Streamlit
         subprocess.run([
-            "streamlit", "run", "/home/claude/app.py",
+            "streamlit", "run", str(APP_PY),
             "--logger.level=error"
         ])
 
