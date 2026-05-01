@@ -1,4 +1,4 @@
-# 🚀 RAG System - Quick Start Guide
+# RAG System - Quick Start Guide
 
 ## Installation (2 minutes)
 
@@ -320,4 +320,4 @@ The system will use fallback responses when API is unavailable
 
 ---
 
-**Happy querying! 🚀**
+**Happy querying!**

@@ -303,7 +303,7 @@ ingester = DocumentIngester(chunk_size=256, overlap=50)
 - Check API rate limits and usage
 - Use demo mode for testing without API key
 
-## 📈 Performance Metrics
+## Performance Metrics
 
 ### Indexing
 - **Sample dataset** (100KB of documents): ~5-10 seconds
@@ -319,14 +319,14 @@ ingester = DocumentIngester(chunk_size=256, overlap=50)
 - **Vector store**: ~1.5GB for 1M documents with 384-dim embeddings
 - **Index overhead**: ~50MB for 100K documents
 
-## 🔒 Security Considerations
+## Security Considerations
 
 - API keys: Store in environment variables, never commit to repo
 - Document access: Implement access controls in production
 - Rate limiting: Use API rate limits to prevent abuse
 - Data privacy: Ensure compliance with data protection regulations
 
-## 🚀 Production Deployment
+## Production Deployment
 
 ### Using Docker
 ```dockerfile
@@ -365,6 +365,10 @@ spec:
           key: openai
 ```
 
-## 📝 License
+## License
 
-This project is provided as-is for educational and development purposes.
+All materials contained herein are released under the MIT license. See [`LICENSE`](LICENSE) for more detals.
+
+## Author
+
+José Eduardo Herrera. Feedback welcome via GitHub issues.
