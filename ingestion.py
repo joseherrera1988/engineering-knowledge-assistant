@@ -187,8 +187,11 @@ class DocumentIngester:
         return documents
 
 
-def create_sample_documents(directory: str = "/home/claude/sample_docs") -> None:
+def create_sample_documents(directory: str | None = None) -> None:
     """Create sample engineering documentation"""
+    from paths import SAMPLE_DOCS_DIR
+    if directory is None:
+        directory = str(SAMPLE_DOCS_DIR)
     os.makedirs(directory, exist_ok=True)
     
     # API Documentation
