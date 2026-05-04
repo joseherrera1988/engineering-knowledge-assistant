@@ -85,6 +85,30 @@ def init_session_state():
     if "index_stats" not in st.session_state:
         st.session_state.index_stats = {}
 
+    if not st.session_state.documents_loaded:
+        try_load_existing_index()
+
+
+def try_load_existing_index() -> bool:
+    """Load a previously saved FAISS index if one exists on disk."""
+    import paths
+
+    index_file = paths.INDEX_DIR / "index.faiss"
+    if not index_file.exists():
+        return False
+
+    try:
+        vector_store = FAISSVectorStore()
+        vector_store.load(str(paths.INDEX_DIR))
+    except Exception:
+        return False
+
+    st.session_state.vector_store = vector_store
+    st.session_state.agent = RAGAgent(vector_store)
+    st.session_state.documents_loaded = True
+    st.session_state.index_stats = vector_store.get_document_stats()
+    return True
+
 
 init_session_state()
 

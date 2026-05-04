@@ -3,11 +3,26 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
+from ingestion import Document
 from rag_agent import AgentResponse
+from vector_store import FAISSVectorStore, SimpleEmbeddingModel
 
 APP_PATH = str(Path(__file__).resolve().parent.parent / "app.py")
+
+
+def _build_saved_index(target_dir: Path) -> None:
+    target_dir.mkdir(parents=True, exist_ok=True)
+    vs = FAISSVectorStore.__new__(FAISSVectorStore)
+    vs.model = SimpleEmbeddingModel()
+    vs.embedding_dim = 384
+    vs.index = None
+    vs.documents = []
+    vs.use_gpu = False
+    vs.add_documents([Document(content="hello world", source="a.md", chunk_id=0)])
+    vs.save(str(target_dir))
 
 
 def _new_app(timeout: int = 60) -> AppTest:
@@ -29,6 +44,25 @@ def _seed_loaded_state(at: AppTest, agent: MagicMock | None = None) -> MagicMock
         "sources": ["a.md"],
     }
     return agent
+
+
+def test_app_auto_loads_saved_index_on_startup(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    index_dir = tmp_path / "rag_index"
+    _build_saved_index(index_dir)
+
+    import paths
+
+    monkeypatch.setattr(paths, "INDEX_DIR", index_dir)
+
+    at = _new_app()
+    at.run()
+
+    assert not at.exception
+    assert at.session_state["documents_loaded"] is True
+    assert at.session_state["agent"] is not None
+    assert at.session_state["index_stats"]["total_indexed"] == 1
 
 
 def test_initial_state_shows_warning_and_init_button() -> None:
