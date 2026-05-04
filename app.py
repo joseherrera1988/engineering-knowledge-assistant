@@ -156,32 +156,34 @@ def load_documents():
         return True
 
 
+def format_sources(response):
+    """Render the source attribution / confidence block."""
+    if not response.sources:
+        return
+    st.markdown("### 📎 Sources")
+
+    cols = st.columns([1, 1])
+    with cols[0]:
+        st.metric("Confidence", f"{response.confidence:.1%}")
+    with cols[1]:
+        st.metric("Tool Used", response.tool_used.replace("_", " ").title())
+
+    st.markdown("#### Retrieved Documents")
+    for i, source in enumerate(response.sources, 1):
+        with st.expander(
+            f"Source {i}: {Path(source['file']).name} (Similarity: {source['similarity']})"
+        ):
+            st.markdown(f"**File:** `{source['file']}`")
+            st.markdown(f"**Chunk ID:** {source['chunk_id']}")
+            st.markdown("**Excerpt:**")
+            st.text(source["excerpt"])
+
+
 def format_response(response):
     """Format agent response for display"""
     st.markdown("### Answer")
     st.markdown(f'<div class="answer-box">{response.answer}</div>', unsafe_allow_html=True)
-
-    # Display sources
-    if response.sources:
-        st.markdown("### 📎 Sources")
-
-        cols = st.columns([1, 1])
-
-        with cols[0]:
-            st.metric("Confidence", f"{response.confidence:.1%}")
-
-        with cols[1]:
-            st.metric("Tool Used", response.tool_used.replace("_", " ").title())
-
-        st.markdown("#### Retrieved Documents")
-        for i, source in enumerate(response.sources, 1):
-            with st.expander(
-                f"Source {i}: {Path(source['file']).name} (Similarity: {source['similarity']})"
-            ):
-                st.markdown(f"**File:** `{source['file']}`")
-                st.markdown(f"**Chunk ID:** {source['chunk_id']}")
-                st.markdown("**Excerpt:**")
-                st.text(source["excerpt"])
+    format_sources(response)
 
 
 # ============================================================================
@@ -309,8 +311,10 @@ else:
 
         if st.button("Search & Answer", use_container_width=True, type="primary"):
             if question:
-                response = st.session_state.agent.query(question, k=retrieval_k)
-                format_response(response)
+                stream = st.session_state.agent.query_stream(question, k=retrieval_k)
+                st.markdown("### Answer")
+                st.write_stream(stream)
+                format_sources(stream)
             else:
                 st.warning("Please enter a question")
 

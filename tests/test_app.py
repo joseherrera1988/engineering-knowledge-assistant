@@ -7,7 +7,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from ingestion import Document
-from rag_agent import AgentResponse
+from rag_agent import AgentResponse, StreamingResponse
 from vector_store import FAISSVectorStore, SimpleEmbeddingModel
 
 APP_PATH = str(Path(__file__).resolve().parent.parent / "app.py")
@@ -84,12 +84,16 @@ def test_initial_state_shows_warning_and_init_button() -> None:
     assert any("Initialize System" in label for label in button_labels)
 
 
-def test_qa_tab_calls_agent_query() -> None:
+def _stream_response(chunks: list[str], **kwargs: object) -> StreamingResponse:
+    defaults = {"sources": [], "tool_used": "question_answering", "confidence": 0.9}
+    defaults.update(kwargs)
+    return StreamingResponse(_chunks=iter(chunks), **defaults)  # type: ignore[arg-type]
+
+
+def test_qa_tab_streams_answer_via_agent() -> None:
     at = _new_app()
     agent = MagicMock()
-    agent.query.return_value = AgentResponse(
-        answer="42", sources=[], tool_used="question_answering", confidence=0.9
-    )
+    agent.query_stream.return_value = _stream_response(["the ", "answer"])
     _seed_loaded_state(at, agent)
     at.run()
     assert not at.exception
@@ -100,8 +104,8 @@ def test_qa_tab_calls_agent_query() -> None:
     search_btn.click()
     at.run()
 
-    agent.query.assert_called_once()
-    assert agent.query.call_args.args[0] == "what is the answer?"
+    agent.query_stream.assert_called_once()
+    assert agent.query_stream.call_args.args[0] == "what is the answer?"
 
 
 def test_qa_tab_warns_on_empty_question() -> None:
@@ -111,7 +115,7 @@ def test_qa_tab_warns_on_empty_question() -> None:
     next(b for b in at.button if b.label == "Search & Answer").click()
     at.run()
     assert any("enter a question" in w.value.lower() for w in at.warning)
-    agent.query.assert_not_called()
+    agent.query_stream.assert_not_called()
 
 
 def test_summarize_tab_prefixes_query() -> None:
@@ -144,11 +148,11 @@ def test_sql_tab_prefixes_query() -> None:
     assert agent.query.call_args.args[0].startswith("Generate SQL for:")
 
 
-def test_qa_with_sources_renders_format_response() -> None:
+def test_qa_with_sources_renders_format_sources() -> None:
     at = _new_app()
     agent = MagicMock()
-    agent.query.return_value = AgentResponse(
-        answer="here you go",
+    agent.query_stream.return_value = _stream_response(
+        ["here ", "you ", "go"],
         sources=[
             {
                 "file": "/tmp/api_docs.md",
