@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+from pathlib import Path
+from unittest.mock import MagicMock
+
+from streamlit.testing.v1 import AppTest
+
+from rag_agent import AgentResponse
+
+APP_PATH = str(Path(__file__).resolve().parent.parent / "app.py")
+
+
+def _new_app(timeout: int = 60) -> AppTest:
+    return AppTest.from_file(APP_PATH, default_timeout=timeout)
+
+
+def _seed_loaded_state(at: AppTest, agent: MagicMock | None = None) -> MagicMock:
+    agent = agent or MagicMock()
+    at.session_state["documents_loaded"] = True
+    at.session_state["agent"] = agent
+    at.session_state["vector_store"] = MagicMock()
+    at.session_state["conversation_history"] = []
+    at.session_state["index_stats"] = {
+        "total_documents": 1,
+        "total_indexed": 1,
+        "unique_sources": 1,
+        "embedding_dimension": 384,
+        "indexed": True,
+        "sources": ["a.md"],
+    }
+    return agent
+
+
+def test_initial_state_shows_warning_and_init_button() -> None:
+    at = _new_app()
+    at.run()
+    assert not at.exception
+    assert at.session_state["documents_loaded"] is False
+    warning_text = " ".join(w.value for w in at.warning)
+    assert "No documents indexed" in warning_text
+    button_labels = [b.label for b in at.button]
+    assert any("Initialize System" in label for label in button_labels)
+
+
+def test_qa_tab_calls_agent_query() -> None:
+    at = _new_app()
+    agent = MagicMock()
+    agent.query.return_value = AgentResponse(
+        answer="42", sources=[], tool_used="question_answering", confidence=0.9
+    )
+    _seed_loaded_state(at, agent)
+    at.run()
+    assert not at.exception
+
+    qa_input = next(t for t in at.text_input if t.key == "qa_question")
+    qa_input.set_value("what is the answer?")
+    search_btn = next(b for b in at.button if b.label == "Search & Answer")
+    search_btn.click()
+    at.run()
+
+    agent.query.assert_called_once()
+    assert agent.query.call_args.args[0] == "what is the answer?"
+
+
+def test_qa_tab_warns_on_empty_question() -> None:
+    at = _new_app()
+    agent = _seed_loaded_state(at)
+    at.run()
+    next(b for b in at.button if b.label == "Search & Answer").click()
+    at.run()
+    assert any("enter a question" in w.value.lower() for w in at.warning)
+    agent.query.assert_not_called()
+
+
+def test_summarize_tab_prefixes_query() -> None:
+    at = _new_app()
+    agent = MagicMock()
+    agent.query.return_value = AgentResponse(
+        answer="sum", sources=[], tool_used="summarization", confidence=0.7
+    )
+    _seed_loaded_state(at, agent)
+    at.run()
+    next(t for t in at.text_input if t.key == "summary_query").set_value("the api")
+    next(b for b in at.button if b.label == "Summarize").click()
+    at.run()
+    agent.query.assert_called_once()
+    assert agent.query.call_args.args[0].startswith("Summarize the following:")
+
+
+def test_sql_tab_prefixes_query() -> None:
+    at = _new_app()
+    agent = MagicMock()
+    agent.query.return_value = AgentResponse(
+        answer="SELECT 1", sources=[], tool_used="sql_generation", confidence=0.8
+    )
+    _seed_loaded_state(at, agent)
+    at.run()
+    next(t for t in at.text_input if t.key == "sql_request").set_value("recent docs")
+    next(b for b in at.button if b.label == "Generate SQL").click()
+    at.run()
+    agent.query.assert_called_once()
+    assert agent.query.call_args.args[0].startswith("Generate SQL for:")
+
+
+def test_clear_history_button_resets_history() -> None:
+    at = _new_app()
+    agent = _seed_loaded_state(at)
+    at.session_state["conversation_history"] = [{"role": "user", "content": "hi"}]
+    at.run()
+    next(b for b in at.button if "Clear History" in b.label).click()
+    at.run()
+    assert at.session_state["conversation_history"] == []
+    agent.clear_history.assert_called_once()
