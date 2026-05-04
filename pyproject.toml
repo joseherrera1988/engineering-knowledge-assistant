@@ -30,7 +30,7 @@ ignore = ["E501"]
 [tool.mypy]
 strict = true
 python_version = "3.11"
-files = ["paths.py", "ingestion.py", "vector_store.py", "rag_agent.py", "main.py", "uploads.py"]
+files = ["paths.py", "ingestion.py", "vector_store.py", "rag_agent.py", "main.py", "uploads.py", "eval_harness.py"]
 
 [[tool.mypy.overrides]]
 module = ["faiss", "faiss.*", "sentence_transformers", "sentence_transformers.*"]
