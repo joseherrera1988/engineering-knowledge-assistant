@@ -102,6 +102,81 @@ def test_sql_tab_prefixes_query() -> None:
     assert agent.query.call_args.args[0].startswith("Generate SQL for:")
 
 
+def test_qa_with_sources_renders_format_response() -> None:
+    at = _new_app()
+    agent = MagicMock()
+    agent.query.return_value = AgentResponse(
+        answer="here you go",
+        sources=[
+            {
+                "file": "/tmp/api_docs.md",
+                "chunk_id": 3,
+                "excerpt": "Bearer token auth.",
+                "similarity": "82.50%",
+            }
+        ],
+        tool_used="question_answering",
+        confidence=0.825,
+    )
+    _seed_loaded_state(at, agent)
+    at.run()
+    next(t for t in at.text_input if t.key == "qa_question").set_value("auth?")
+    next(b for b in at.button if b.label == "Search & Answer").click()
+    at.run()
+    assert not at.exception
+    metric_labels = [m.label for m in at.metric]
+    assert "Confidence" in metric_labels
+    assert "Tool Used" in metric_labels
+
+
+def test_summarize_empty_input_warns() -> None:
+    at = _new_app()
+    agent = _seed_loaded_state(at)
+    at.run()
+    next(b for b in at.button if b.label == "Summarize").click()
+    at.run()
+    assert any("what to summarize" in w.value.lower() for w in at.warning)
+    agent.query.assert_not_called()
+
+
+def test_sql_empty_input_warns() -> None:
+    at = _new_app()
+    agent = _seed_loaded_state(at)
+    at.run()
+    next(b for b in at.button if b.label == "Generate SQL").click()
+    at.run()
+    assert any("describe your query" in w.value.lower() for w in at.warning)
+    agent.query.assert_not_called()
+
+
+def test_chat_send_invokes_multi_turn_and_renders_history() -> None:
+    at = _new_app()
+    agent = MagicMock()
+    agent.multi_turn_conversation.return_value = AgentResponse(
+        answer="hi back", sources=[], tool_used="question_answering", confidence=0.5
+    )
+    _seed_loaded_state(at, agent)
+    at.session_state["conversation_history"] = [
+        {"role": "user", "content": "hello"},
+        {"role": "assistant", "content": "world"},
+    ]
+    at.run()
+    next(t for t in at.text_input if t.key == "chat_message").set_value("again")
+    next(b for b in at.button if b.label == "Send").click()
+    at.run()
+    agent.multi_turn_conversation.assert_called_once_with("again")
+
+
+def test_chat_send_empty_warns() -> None:
+    at = _new_app()
+    agent = _seed_loaded_state(at)
+    at.run()
+    next(b for b in at.button if b.label == "Send").click()
+    at.run()
+    assert any("enter a message" in w.value.lower() for w in at.warning)
+    agent.multi_turn_conversation.assert_not_called()
+
+
 def test_clear_history_button_resets_history() -> None:
     at = _new_app()
     agent = _seed_loaded_state(at)
