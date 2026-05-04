@@ -19,7 +19,9 @@ def _store_with_docs() -> FAISSVectorStore:
         [
             Document(content="FAISS provides vector similarity search.", source="a.md", chunk_id=0),
             Document(content="API uses Bearer token authentication.", source="b.md", chunk_id=1),
-            Document(content="The documents table has a uuid primary key.", source="c.md", chunk_id=2),
+            Document(
+                content="The documents table has a uuid primary key.", source="c.md", chunk_id=2
+            ),
         ]
     )
     return s
@@ -94,9 +96,7 @@ def test_select_tool_routing() -> None:
 def test_call_llm_falls_back_when_client_raises() -> None:
     class Boom:
         def __init__(self) -> None:
-            self.chat = SimpleNamespace(
-                completions=SimpleNamespace(create=self._boom)
-            )
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._boom))
 
         def _boom(self, **_: Any) -> Any:
             raise RuntimeError("api down")
@@ -114,6 +114,82 @@ def test_multi_turn_conversation_tracks_history() -> None:
     assert len(agent.conversation_history) == 4
     agent.clear_history()
     assert agent.conversation_history == []
+
+
+class _FakeStreamCompletions:
+    def __init__(self, chunks: list[str]) -> None:
+        self.chunks = chunks
+        self.calls: list[dict[str, Any]] = []
+
+    def create(self, **kwargs: Any) -> Any:
+        self.calls.append(kwargs)
+        if kwargs.get("stream"):
+            return iter(
+                [
+                    SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=c))])
+                    for c in self.chunks
+                ]
+            )
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="".join(self.chunks)))]
+        )
+
+
+class _FakeStreamClient:
+    def __init__(self, chunks: list[str]) -> None:
+        self.completions = _FakeStreamCompletions(chunks)
+        self.chat = SimpleNamespace(completions=self.completions)
+
+
+def test_query_stream_yields_chunks_and_aggregates_answer() -> None:
+    fake = _FakeStreamClient(["Hello, ", "world", "!"])
+    agent = RAGAgent(_store_with_docs(), client=fake)
+    stream = agent.query_stream("What does FAISS do?")
+
+    chunks = list(stream)
+
+    assert chunks == ["Hello, ", "world", "!"]
+    assert stream.answer == "Hello, world!"
+    assert stream.tool_used == "question_answering"
+    assert len(stream.sources) > 0
+    assert fake.completions.calls[0]["stream"] is True
+
+
+def test_query_stream_no_results_returns_empty_stream() -> None:
+    empty = FAISSVectorStore.__new__(FAISSVectorStore)
+    empty.model = SimpleEmbeddingModel()
+    empty.embedding_dim = 384
+    empty.index = None
+    empty.documents = []
+    empty.use_gpu = False
+    fake = _FakeStreamClient(["unused"])
+
+    agent = RAGAgent(empty, client=fake)
+    stream = agent.query_stream("anything")
+    chunks = list(stream)
+
+    assert chunks == []
+    assert stream.tool_used == "retrieval_failed"
+    assert stream.confidence == 0.0
+    assert stream.sources == []
+    assert "No relevant documents" in stream.answer
+    assert fake.completions.calls == []
+
+
+def test_query_stream_falls_back_when_client_raises() -> None:
+    class Boom:
+        def __init__(self) -> None:
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._boom))
+
+        def _boom(self, **_: Any) -> Any:
+            raise RuntimeError("api down")
+
+    agent = RAGAgent(_store_with_docs(), client=Boom())
+    stream = agent.query_stream("Summarize the docs")
+    chunks = list(stream)
+    assert chunks
+    assert stream.answer == "".join(chunks)
+    assert "Summary" in stream.answer
 
 
 def test_get_stats_shape() -> None:
