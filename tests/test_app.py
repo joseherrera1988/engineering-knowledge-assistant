@@ -7,7 +7,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from ingestion import Document
-from rag_agent import AgentResponse, StreamingResponse
+from rag_agent import StreamingResponse
 from vector_store import FAISSVectorStore, SimpleEmbeddingModel
 
 APP_PATH = str(Path(__file__).resolve().parent.parent / "app.py")
@@ -121,31 +121,31 @@ def test_qa_tab_warns_on_empty_question() -> None:
 def test_summarize_tab_prefixes_query() -> None:
     at = _new_app()
     agent = MagicMock()
-    agent.query.return_value = AgentResponse(
-        answer="sum", sources=[], tool_used="summarization", confidence=0.7
+    agent.query_stream.return_value = _stream_response(
+        ["sum"], tool_used="summarization", confidence=0.7
     )
     _seed_loaded_state(at, agent)
     at.run()
     next(t for t in at.text_input if t.key == "summary_query").set_value("the api")
     next(b for b in at.button if b.label == "Summarize").click()
     at.run()
-    agent.query.assert_called_once()
-    assert agent.query.call_args.args[0].startswith("Summarize the following:")
+    agent.query_stream.assert_called_once()
+    assert agent.query_stream.call_args.args[0].startswith("Summarize the following:")
 
 
 def test_sql_tab_prefixes_query() -> None:
     at = _new_app()
     agent = MagicMock()
-    agent.query.return_value = AgentResponse(
-        answer="SELECT 1", sources=[], tool_used="sql_generation", confidence=0.8
+    agent.query_stream.return_value = _stream_response(
+        ["SELECT 1"], tool_used="sql_generation", confidence=0.8
     )
     _seed_loaded_state(at, agent)
     at.run()
     next(t for t in at.text_input if t.key == "sql_request").set_value("recent docs")
     next(b for b in at.button if b.label == "Generate SQL").click()
     at.run()
-    agent.query.assert_called_once()
-    assert agent.query.call_args.args[0].startswith("Generate SQL for:")
+    agent.query_stream.assert_called_once()
+    assert agent.query_stream.call_args.args[0].startswith("Generate SQL for:")
 
 
 def test_qa_with_sources_renders_format_sources() -> None:
@@ -198,8 +198,8 @@ def test_sql_empty_input_warns() -> None:
 def test_chat_send_invokes_multi_turn_and_renders_history() -> None:
     at = _new_app()
     agent = MagicMock()
-    agent.multi_turn_conversation.return_value = AgentResponse(
-        answer="hi back", sources=[], tool_used="question_answering", confidence=0.5
+    agent.multi_turn_conversation_stream.return_value = _stream_response(
+        ["hi ", "back"], tool_used="question_answering", confidence=0.5
     )
     _seed_loaded_state(at, agent)
     at.session_state["conversation_history"] = [
@@ -210,7 +210,7 @@ def test_chat_send_invokes_multi_turn_and_renders_history() -> None:
     next(t for t in at.text_input if t.key == "chat_message").set_value("again")
     next(b for b in at.button if b.label == "Send").click()
     at.run()
-    agent.multi_turn_conversation.assert_called_once_with("again")
+    agent.multi_turn_conversation_stream.assert_called_once_with("again")
 
 
 def test_chat_send_empty_warns() -> None:
@@ -220,7 +220,7 @@ def test_chat_send_empty_warns() -> None:
     next(b for b in at.button if b.label == "Send").click()
     at.run()
     assert any("enter a message" in w.value.lower() for w in at.warning)
-    agent.multi_turn_conversation.assert_not_called()
+    agent.multi_turn_conversation_stream.assert_not_called()
 
 
 def test_clear_history_button_resets_history() -> None:
