@@ -65,6 +65,14 @@ def test_app_auto_loads_saved_index_on_startup(
     assert at.session_state["index_stats"]["total_indexed"] == 1
 
 
+def test_sidebar_renders_file_uploader() -> None:
+    at = _new_app()
+    at.run()
+    assert not at.exception
+    keys = [getattr(el, "key", None) for el in at.sidebar.file_uploader]
+    assert "file_uploader" in keys
+
+
 def test_initial_state_shows_warning_and_init_button() -> None:
     at = _new_app()
     at.run()

@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ingestion import DocumentIngester, create_sample_documents
 from rag_agent import RAGAgent
+from uploads import ingest_uploaded_files
 from vector_store import FAISSVectorStore
 
 # ============================================================================
@@ -215,6 +216,26 @@ with st.sidebar:
 
     if st.button("🔄 Load/Reload Documents", use_container_width=True):
         load_documents()
+
+    uploaded = st.file_uploader(
+        "Upload your own documents",
+        type=["md", "txt", "py", "js", "sql"],
+        accept_multiple_files=True,
+        key="file_uploader",
+    )
+    if uploaded:
+        from paths import INDEX_DIR, UPLOADS_DIR
+
+        store, added = ingest_uploaded_files(uploaded, UPLOADS_DIR, st.session_state.vector_store)
+        if added:
+            store.save(str(INDEX_DIR))
+            st.session_state.vector_store = store
+            st.session_state.agent = RAGAgent(store)
+            st.session_state.documents_loaded = True
+            st.session_state.index_stats = store.get_document_stats()
+            st.success(f"✓ Added {added} chunks from {len(uploaded)} file(s)")
+        else:
+            st.warning("No content could be extracted from the uploaded files.")
 
     # Search Parameters
     st.markdown("### 🔍 Search Parameters")
