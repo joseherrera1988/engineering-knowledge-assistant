@@ -254,6 +254,24 @@ class RAGAgent:
             "tokens with a 100 req/min rate limit."
         )
 
+    def multi_turn_conversation_stream(self, user_input: str) -> StreamingResponse:
+        self.conversation_history.append({"role": "user", "content": user_input})
+        base = self.query_stream(user_input)
+        history = self.conversation_history
+
+        def wrapped() -> Iterator[str]:
+            try:
+                yield from base
+            finally:
+                history.append({"role": "assistant", "content": base.answer})
+
+        return StreamingResponse(
+            sources=base.sources,
+            tool_used=base.tool_used,
+            confidence=base.confidence,
+            _chunks=wrapped(),
+        )
+
     def multi_turn_conversation(self, user_input: str) -> AgentResponse:
         self.conversation_history.append({"role": "user", "content": user_input})
         response = self.query(user_input)

@@ -340,8 +340,10 @@ else:
             if st.button("Summarize", use_container_width=True, type="primary"):
                 if summary_query:
                     full_query = f"Summarize the following: {summary_query}"
-                    response = st.session_state.agent.query(full_query, k=retrieval_k)
-                    format_response(response)
+                    stream = st.session_state.agent.query_stream(full_query, k=retrieval_k)
+                    st.markdown("### Answer")
+                    st.write_stream(stream)
+                    format_sources(stream)
                 else:
                     st.warning("Please enter what to summarize")
 
@@ -364,8 +366,10 @@ else:
         if st.button("Generate SQL", use_container_width=True, type="primary"):
             if sql_request:
                 full_query = f"Generate SQL for: {sql_request}"
-                response = st.session_state.agent.query(full_query, k=retrieval_k)
-                format_response(response)
+                stream = st.session_state.agent.query_stream(full_query, k=retrieval_k)
+                st.markdown("### Answer")
+                st.write_stream(stream)
+                format_sources(stream)
             else:
                 st.warning("Please describe your query")
 
@@ -396,8 +400,10 @@ else:
 
         if st.button("Send", use_container_width=True, type="primary"):
             if user_message:
-                response = st.session_state.agent.multi_turn_conversation(user_message)
-                st.rerun()
+                stream = st.session_state.agent.multi_turn_conversation_stream(user_message)
+                st.markdown(f"**You:** {user_message}")
+                st.markdown("**Assistant:**")
+                st.write_stream(stream)
             else:
                 st.warning("Please enter a message")
 

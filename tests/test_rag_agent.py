@@ -192,6 +192,18 @@ def test_query_stream_falls_back_when_client_raises() -> None:
     assert "Summary" in stream.answer
 
 
+def test_multi_turn_conversation_stream_records_history() -> None:
+    fake = _FakeStreamClient(["hi ", "back"])
+    agent = RAGAgent(_store_with_docs(), client=fake)
+    stream = agent.multi_turn_conversation_stream("hello")
+    chunks = list(stream)
+    assert chunks == ["hi ", "back"]
+    assert agent.conversation_history == [
+        {"role": "user", "content": "hello"},
+        {"role": "assistant", "content": "hi back"},
+    ]
+
+
 def test_get_stats_shape() -> None:
     agent = RAGAgent(_store_with_docs(), client=_FakeClient())
     stats = agent.get_stats()
