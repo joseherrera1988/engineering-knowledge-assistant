@@ -6,6 +6,7 @@ Interactive interface for document search, Q&A, and summarization
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import streamlit as st
 
@@ -69,7 +70,7 @@ st.markdown(
 # ============================================================================
 
 
-def init_session_state():
+def init_session_state() -> None:
     """Initialize session state variables"""
     if "vector_store" not in st.session_state:
         st.session_state.vector_store = None
@@ -119,7 +120,7 @@ init_session_state()
 # ============================================================================
 
 
-def load_documents():
+def load_documents() -> bool:
     """Load and index documents"""
     with st.spinner("Loading and indexing documents..."):
         # Create sample documents if they don't exist
@@ -156,7 +157,7 @@ def load_documents():
         return True
 
 
-def format_sources(response):
+def format_sources(response: Any) -> None:
     """Render the source attribution / confidence block."""
     if not response.sources:
         return
@@ -179,7 +180,7 @@ def format_sources(response):
             st.text(source["excerpt"])
 
 
-def format_response(response):
+def format_response(response: Any) -> None:
     """Format agent response for display"""
     st.markdown("### Answer")
     st.markdown(f'<div class="answer-box">{response.answer}</div>', unsafe_allow_html=True)

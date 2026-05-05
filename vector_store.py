@@ -69,7 +69,12 @@ class FAISSVectorStore:
         if HAS_SENTENCE_TRANSFORMERS:
             try:
                 self.model = SentenceTransformer(model_name)
-                self.embedding_dim = self.model.get_sentence_embedding_dimension()
+                get_dim = getattr(
+                    self.model,
+                    "get_embedding_dimension",
+                    self.model.get_sentence_embedding_dimension,
+                )
+                self.embedding_dim = get_dim()
             except Exception:
                 print("⚠️ Using fallback embedding model")
                 self.model = SimpleEmbeddingModel()
