@@ -31,7 +31,7 @@ This project sets out to answer the question:
 
 ## Why Retrieval-First
 
-The hardest part of building LLM-backed systems for technical content is keeping answers grounded. This repository is built on the principle that **every answer must point back to a source the reader can open**, and that retrieval quality is the upstream lever — a fluent generator over bad context is just a more confident hallucinator.
+The hardest part of building LLM-backed systems for technical content is keeping answers grounded. This repository is built on the principle that **every answer must point back to a source the reader can open**, and that retrieval quality is the upstream lever.
 
 Three concrete commitments fall out of that:
 
@@ -141,7 +141,7 @@ engineering-knowledge-assistant/
 
 ## A Note on Sample Documents
 
-The four files generated under `sample_docs/` (an API doc, an architecture note, a database schema, and a small vector-search code sample) are produced by `create_sample_documents()` in [`ingestion.py`](ingestion.py). They exist solely to give a new user something to index and query on a fresh checkout — they are illustrative, not modeled after any real system, and contain no proprietary content. Point the ingester at your own directory to evaluate the system on real documentation.
+The four files generated under `sample_docs/` (an API doc, an architecture note, a database schema, and a small vector-search code sample) are produced by `create_sample_documents()` in [`ingestion.py`](ingestion.py). They exist solely to give a new user something to index and query on a fresh checkout; that is, they are illustrative of, rather than modeled after any real system, and contain no proprietary content. Point the ingester at your own directory to evaluate the system on real documentation.
 
 ## License
 
