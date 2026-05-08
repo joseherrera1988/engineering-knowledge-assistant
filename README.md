@@ -10,7 +10,7 @@ It focuses on a core production challenge in LLM systems: **answering technical 
 
 Internal engineering knowledge is fragmented across READMEs, schema docs, architecture notes, and code:
 
-- Engineers spend siginificant time searching through documentation that ideally should be accessible through a single query.
+- Engineers spend significant time searching through documentation that ideally should be accessible through a single query.
 - Unrefined LLMs often generate fluent responses but invent APIs, fields, and behaviors that do not exist.
 - An unsubstantiated answer in a technical context can be more detrimental than no answer, as it contains load-bearing misinformation.
 
