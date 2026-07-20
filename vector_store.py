@@ -226,10 +226,21 @@ class HybridRetriever:
     def retrieve_with_filters(
         self, query: str, k: int = 5, sources: list[str] | None = None
     ) -> list[RetrievalResult]:
-        """Retrieve with optional source filtering"""
-        results = self.retrieve(query, k=k * 2)
+        """Retrieve with optional source filtering.
 
-        if sources:
-            results = [r for r in results if r.source in sources]
+        Filtering happens over the whole ranked corpus rather than a small
+        over-fetched slice, so a source filter returns up to k results whenever
+        the corpus holds that many for the given sources -- it never silently
+        returns fewer just because the matching docs ranked low.
+        """
+        if not sources:
+            return self.retrieve(query, k=k)
 
-        return results[:k]
+        total = self.vector_store.index.ntotal if self.vector_store.index is not None else 0
+        if total == 0:
+            return []
+
+        allowed = set(sources)
+        ranked = self.vector_store.search(query, k=total)
+        filtered = [r for r in ranked if r.source in allowed]
+        return filtered[:k]
