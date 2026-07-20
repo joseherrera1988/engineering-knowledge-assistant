@@ -150,6 +150,58 @@ def test_hybrid_retriever_filters_by_source() -> None:
     assert all(r.source == "a.md" for r in out)
 
 
+class _AngleModel:
+    """Deterministic 2-D embedding model: each text maps to a unit vector at a
+    fixed angle, so cosine ranking against the query (angle 0) is fully known."""
+
+    def __init__(self, angles: dict[str, float]) -> None:
+        self.angles = angles
+        self.dimension = 2
+
+    def encode(
+        self, texts: str | list[str], convert_to_numpy: bool = True, show_progress_bar: bool = False
+    ) -> np.ndarray:
+        items = texts if isinstance(texts, list) else [texts]
+        vecs = np.array(
+            [[np.cos(self.angles[t]), np.sin(self.angles[t])] for t in items], dtype=np.float32
+        )
+        return vecs if isinstance(texts, list) else vecs[0]
+
+    def get_sentence_embedding_dimension(self) -> int:
+        return self.dimension
+
+
+def test_filter_returns_k_even_when_source_ranks_below_overfetch_window() -> None:
+    """A source filter must still return k results when the corpus has them,
+    even if those docs rank far below the top few by similarity."""
+    query = "Q"
+    # 12 noise docs hug the query (small angles → high cosine); 3 target docs
+    # sit at large angles → lowest cosine, well outside any small over-fetch.
+    angles = {query: 0.0}
+    docs = []
+    for i in range(12):
+        t = f"noise {i}"
+        angles[t] = 0.05 * (i + 1)
+        docs.append(Document(content=t, source="noise.md", chunk_id=i))
+    for i in range(3):
+        t = f"target {i}"
+        angles[t] = 1.4 + 0.01 * i
+        docs.append(Document(content=t, source="target.md", chunk_id=100 + i))
+
+    s = FAISSVectorStore.__new__(FAISSVectorStore)
+    s.model = _AngleModel(angles)
+    s.embedding_dim = 2
+    s.index = None
+    s.documents = []
+    s.use_gpu = False
+    s.add_documents(docs)
+
+    h = HybridRetriever(s)
+    out = h.retrieve_with_filters(query, k=3, sources=["target.md"])
+    assert len(out) == 3
+    assert all(r.source == "target.md" for r in out)
+
+
 def test_add_documents_no_op_on_empty() -> None:
     s = _store()
     s.add_documents([])
