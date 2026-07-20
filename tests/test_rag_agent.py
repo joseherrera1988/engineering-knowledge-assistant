@@ -3,8 +3,10 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from ingestion import Document
-from rag_agent import AgentResponse, RAGAgent
+from rag_agent import DEMO_NOTICE, AgentResponse, RAGAgent
 from vector_store import FAISSVectorStore, SimpleEmbeddingModel
 
 
@@ -93,17 +95,41 @@ def test_select_tool_routing() -> None:
     assert agent._select_tool("What is X?") == "question_answering"
 
 
-def test_call_llm_falls_back_when_client_raises() -> None:
-    class Boom:
-        def __init__(self) -> None:
-            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._boom))
+class _BoomClient:
+    def __init__(self) -> None:
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._boom))
 
-        def _boom(self, **_: Any) -> Any:
-            raise RuntimeError("api down")
+    def _boom(self, **_: Any) -> Any:
+        raise RuntimeError("api down")
 
-    agent = RAGAgent(_store_with_docs(), client=Boom())
+
+def test_call_llm_propagates_when_client_raises() -> None:
+    """A real LLM failure must surface, never silently return fabricated prose."""
+    agent = RAGAgent(_store_with_docs(), client=_BoomClient())
+    with pytest.raises(RuntimeError, match="api down"):
+        agent._call_llm("Summarize something")
+
+
+def test_call_llm_returns_labeled_demo_in_demo_mode() -> None:
+    """Demo mode returns a canned response without calling the client, visibly labeled."""
+    agent = RAGAgent(_store_with_docs(), client=_BoomClient(), demo_mode=True)
     out = agent._call_llm("Summarize something")
     assert "Summary" in out
+    assert DEMO_NOTICE in out
+
+
+def test_query_propagates_client_error_when_not_demo() -> None:
+    agent = RAGAgent(_store_with_docs(), client=_BoomClient())
+    with pytest.raises(RuntimeError, match="api down"):
+        agent.query("What does FAISS do?")
+
+
+def test_query_demo_mode_labels_answer_and_skips_client() -> None:
+    fake = _FakeClient(reply="should not be used")
+    agent = RAGAgent(_store_with_docs(), client=fake, demo_mode=True)
+    response = agent.query("What does FAISS do?")
+    assert DEMO_NOTICE in response.answer
+    assert fake.completions.calls == []
 
 
 def test_multi_turn_conversation_tracks_history() -> None:
@@ -176,20 +202,23 @@ def test_query_stream_no_results_returns_empty_stream() -> None:
     assert fake.completions.calls == []
 
 
-def test_query_stream_falls_back_when_client_raises() -> None:
-    class Boom:
-        def __init__(self) -> None:
-            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._boom))
+def test_query_stream_propagates_when_client_raises() -> None:
+    agent = RAGAgent(_store_with_docs(), client=_BoomClient())
+    stream = agent.query_stream("Summarize the docs")
+    with pytest.raises(RuntimeError, match="api down"):
+        list(stream)
 
-        def _boom(self, **_: Any) -> Any:
-            raise RuntimeError("api down")
 
-    agent = RAGAgent(_store_with_docs(), client=Boom())
+def test_query_stream_demo_mode_yields_labeled_response() -> None:
+    fake = _FakeStreamClient(["should not be used"])
+    agent = RAGAgent(_store_with_docs(), client=fake, demo_mode=True)
     stream = agent.query_stream("Summarize the docs")
     chunks = list(stream)
     assert chunks
     assert stream.answer == "".join(chunks)
     assert "Summary" in stream.answer
+    assert DEMO_NOTICE in stream.answer
+    assert fake.completions.calls == []
 
 
 def test_multi_turn_conversation_stream_records_history() -> None:
