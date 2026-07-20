@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import faiss
+import numpy as np
+import pytest
+
 from ingestion import Document
 from vector_store import (
     FAISSVectorStore,
@@ -56,6 +60,32 @@ def test_add_and_search_returns_results() -> None:
 def test_search_empty_store_returns_empty() -> None:
     s = _store()
     assert s.search("anything") == []
+
+
+def test_index_uses_inner_product_metric() -> None:
+    """Embeddings are cosine-normalized and searched by inner product, not raw L2."""
+    s = _store()
+    s.add_documents(_docs())
+    assert s.index.metric_type == faiss.METRIC_INNER_PRODUCT
+
+
+def test_similarity_scores_are_cosine() -> None:
+    s = _store()
+    s.add_documents(_docs())
+    # A query identical to a stored document maps to the same unit vector, so
+    # cosine similarity is ~1.0, and all scores stay within [-1, 1].
+    results = s.search("Bearer tokens authenticate API requests.", k=3)
+    assert results[0].source == "b.md"
+    assert results[0].similarity_score == pytest.approx(1.0, abs=1e-4)
+    assert all(-1.0 - 1e-6 <= r.similarity_score <= 1.0 + 1e-6 for r in results)
+
+
+def test_indexed_vectors_are_unit_norm() -> None:
+    s = _store()
+    s.add_documents(_docs())
+    stored = s.index.reconstruct_n(0, s.index.ntotal)
+    norms = np.linalg.norm(stored, axis=1)
+    assert np.allclose(norms, 1.0, atol=1e-4)
 
 
 def test_get_document_stats() -> None:
