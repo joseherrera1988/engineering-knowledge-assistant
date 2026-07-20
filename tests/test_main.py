@@ -89,7 +89,7 @@ def test_main_demo_mode_loads_existing_index_and_runs_queries(
     fake_agent.query.return_value = AgentResponse(
         answer="ok", sources=[], tool_used="question_answering", confidence=0.5
     )
-    monkeypatch.setattr(main, "RAGAgent", lambda store: fake_agent)
+    monkeypatch.setattr(main, "RAGAgent", lambda store, **_: fake_agent)
     sentinel = MagicMock()
     monkeypatch.setattr(main.subprocess, "run", sentinel)
 
@@ -124,7 +124,7 @@ def test_main_full_mode_runs_all_phases(monkeypatch: pytest.MonkeyPatch, tmp_pat
     fake_agent.query.return_value = AgentResponse(
         answer="ok", sources=[], tool_used="question_answering", confidence=0.5
     )
-    monkeypatch.setattr(main, "RAGAgent", lambda store: fake_agent)
+    monkeypatch.setattr(main, "RAGAgent", lambda store, **_: fake_agent)
     captured: dict[str, Any] = {}
     monkeypatch.setattr(main.subprocess, "run", lambda cmd: captured.setdefault("cmd", cmd))
 

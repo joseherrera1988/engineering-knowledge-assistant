@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ingestion import Document, DocumentIngester, create_sample_documents
 from paths import APP_PY, INDEX_DIR, SAMPLE_DOCS_DIR
-from rag_agent import RAGAgent
+from rag_agent import RAGAgent, demo_mode_from_env
 from vector_store import FAISSVectorStore
 
 
@@ -102,13 +102,16 @@ def main() -> None:
         vector_store, documents = initialize_system()
 
     if args.mode in ["demo", "full"]:
+        demo = demo_mode_from_env()
+        if demo:
+            print("\n⚠️ No OPENAI_API_KEY set — running in demo mode (canned answers).")
         if args.mode == "full":
-            agent = RAGAgent(vector_store)
+            agent = RAGAgent(vector_store, demo_mode=demo)
         else:
             # Load from saved index
             vector_store = FAISSVectorStore()
             vector_store.load(str(INDEX_DIR))
-            agent = RAGAgent(vector_store)
+            agent = RAGAgent(vector_store, demo_mode=demo)
 
         demo_queries = [
             "What authentication methods are supported by the API?",

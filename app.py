@@ -14,7 +14,7 @@ import streamlit as st
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ingestion import DocumentIngester, create_sample_documents
-from rag_agent import RAGAgent
+from rag_agent import RAGAgent, demo_mode_from_env
 from uploads import ingest_uploaded_files
 from vector_store import FAISSVectorStore
 
@@ -106,7 +106,7 @@ def try_load_existing_index() -> bool:
         return False
 
     st.session_state.vector_store = vector_store
-    st.session_state.agent = RAGAgent(vector_store)
+    st.session_state.agent = RAGAgent(vector_store, demo_mode=demo_mode_from_env())
     st.session_state.documents_loaded = True
     st.session_state.index_stats = vector_store.get_document_stats()
     return True
@@ -143,7 +143,7 @@ def load_documents() -> bool:
         vector_store.add_documents(documents)
 
         # Initialize agent
-        agent = RAGAgent(vector_store)
+        agent = RAGAgent(vector_store, demo_mode=demo_mode_from_env())
 
         # Store in session
         st.session_state.vector_store = vector_store
@@ -197,6 +197,9 @@ with st.sidebar:
     # System Status
     st.markdown("### System Status")
 
+    if demo_mode_from_env():
+        st.warning("⚠️ Demo mode: no OPENAI_API_KEY set. Answers are canned, not LLM-generated.")
+
     if st.session_state.documents_loaded:
         st.success("✓ Documents indexed")
 
@@ -233,7 +236,7 @@ with st.sidebar:
         if added:
             store.save(str(INDEX_DIR))
             st.session_state.vector_store = store
-            st.session_state.agent = RAGAgent(store)
+            st.session_state.agent = RAGAgent(store, demo_mode=demo_mode_from_env())
             st.session_state.documents_loaded = True
             st.session_state.index_stats = store.get_document_stats()
             st.success(f"✓ Added {added} chunks from {len(uploaded)} file(s)")
