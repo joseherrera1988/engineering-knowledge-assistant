@@ -49,6 +49,17 @@ def test_simple_embedding_list_shape() -> None:
     assert out.shape == (3, 384)
 
 
+def test_encode_does_not_mutate_global_rng() -> None:
+    """encode() must be deterministic without touching global numpy RNG state."""
+    m = SimpleEmbeddingModel()
+    np.random.seed(12345)
+    before = np.random.rand()
+    np.random.seed(12345)
+    m.encode(["some text", "other text"])
+    after = np.random.rand()
+    assert before == after
+
+
 def test_add_and_search_returns_results() -> None:
     s = _store()
     s.add_documents(_docs())

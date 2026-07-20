@@ -48,8 +48,8 @@ class SimpleEmbeddingModel:
 
         for text in text_list:
             hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
-            np.random.seed(hash_val % (2**31))
-            embedding = np.random.randn(self.dimension).astype(np.float32)
+            rng = np.random.default_rng(hash_val % (2**31))
+            embedding = rng.standard_normal(self.dimension).astype(np.float32)
             embedding = embedding / (np.linalg.norm(embedding) + 1e-8)
             embeddings.append(embedding)
 
