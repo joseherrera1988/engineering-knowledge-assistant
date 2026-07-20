@@ -14,6 +14,16 @@ from vector_store import FAISSVectorStore, RetrievalResult
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_MAX_TOKENS = 1024
 
+DEMO_NOTICE = (
+    "⚠️ DEMO MODE — no LLM API key is configured, so this is a canned response "
+    "and is not grounded in the retrieved sources.\n\n"
+)
+
+
+def demo_mode_from_env() -> bool:
+    """True when no OpenAI API key is configured, so callers should run in demo mode."""
+    return not os.environ.get("OPENAI_API_KEY")
+
 
 @dataclass
 class AgentResponse:
@@ -59,11 +69,13 @@ class RAGAgent:
         client: Any | None = None,
         model: str = DEFAULT_MODEL,
         max_tokens: int = DEFAULT_MAX_TOKENS,
+        demo_mode: bool = False,
     ) -> None:
         self.vector_store = vector_store
         self.client: Any = client if client is not None else _default_client()
         self.model = model
         self.max_tokens = max_tokens
+        self.demo_mode = demo_mode
         self.conversation_history: list[dict[str, str]] = []
 
     def query(self, user_query: str, k: int = 5) -> AgentResponse:
@@ -203,44 +215,43 @@ class RAGAgent:
         )
 
     def _call_llm_stream(self, prompt: str) -> Iterator[str]:
-        try:
-            stream = self.client.chat.completions.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                messages=[{"role": "user", "content": prompt}],
-                stream=True,
-            )
-            for chunk in stream:
-                delta = chunk.choices[0].delta.content
-                if isinstance(delta, str) and delta:
-                    yield delta
-        except Exception:
+        if self.demo_mode:
             yield self._generate_demo_response(prompt)
+            return
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+            stream=True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if isinstance(delta, str) and delta:
+                yield delta
 
     def _call_llm(self, prompt: str) -> str:
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            content = response.choices[0].message.content
-            return content if isinstance(content, str) else ""
-        except Exception:
+        if self.demo_mode:
             return self._generate_demo_response(prompt)
+        response = self.client.chat.completions.create(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        content = response.choices[0].message.content
+        return content if isinstance(content, str) else ""
 
     def _generate_demo_response(self, prompt: str) -> str:
         p = prompt.lower()
         if "summarize" in p or "summary" in p:
-            return (
+            body = (
                 "## Summary\n\n"
                 "- Document management with versioning\n"
                 "- Bearer-token authenticated REST API\n"
                 "- Microservices: PostgreSQL + Redis + FAISS/Elasticsearch\n"
                 "- Rate limited to 100 req/min\n"
             )
-        if "sql" in p:
-            return (
+        elif "sql" in p:
+            body = (
                 "```sql\n"
                 "SELECT id, title, created_at FROM documents\n"
                 "WHERE is_deleted = FALSE\n"
@@ -248,11 +259,13 @@ class RAGAgent:
                 "```\n"
                 "Returns the 10 most recent non-deleted documents."
             )
-        return (
-            "Based on the documentation, the system uses a microservices architecture "
-            "with Document, Search, and Analytics services. Authentication is via Bearer "
-            "tokens with a 100 req/min rate limit."
-        )
+        else:
+            body = (
+                "Based on the documentation, the system uses a microservices architecture "
+                "with Document, Search, and Analytics services. Authentication is via Bearer "
+                "tokens with a 100 req/min rate limit."
+            )
+        return DEMO_NOTICE + body
 
     def multi_turn_conversation_stream(self, user_input: str) -> StreamingResponse:
         self.conversation_history.append({"role": "user", "content": user_input})
