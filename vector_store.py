@@ -100,28 +100,38 @@ class FAISSVectorStore:
         )
 
         if self.index is None:
-            self.index = faiss.IndexFlatL2(self.embedding_dim)
+            # Inner product over L2-normalized vectors == cosine similarity,
+            # which is what MiniLM-family embeddings are trained for.
+            self.index = faiss.IndexFlatIP(self.embedding_dim)
 
-        embeddings = embeddings.astype(np.float32)
+        embeddings = np.ascontiguousarray(embeddings, dtype=np.float32)
+        faiss.normalize_L2(embeddings)
         self.index.add(embeddings)
         self.documents.extend(documents)
         print(f"✓ Index now contains {self.index.ntotal} documents")
 
-    def search(self, query: str, k: int = 5, threshold: float = 0.0) -> list[RetrievalResult]:
-        """Search for similar documents"""
+    def search(self, query: str, k: int = 5, threshold: float = -1.0) -> list[RetrievalResult]:
+        """Search for similar documents.
+
+        Scores are cosine similarity in [-1, 1]; the default threshold of -1.0
+        returns all k neighbors. Pass a higher threshold (e.g. 0.3) to drop
+        weakly related results.
+        """
         if self.index is None or len(self.documents) == 0:
             return []
 
         query_embedding = self.model.encode(query, convert_to_numpy=True)
-        query_embedding = query_embedding.astype(np.float32).reshape(1, -1)
+        query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32).reshape(1, -1)
+        faiss.normalize_L2(query_embedding)
 
-        distances, indices = self.index.search(query_embedding, min(k, self.index.ntotal))
+        scores, indices = self.index.search(query_embedding, min(k, self.index.ntotal))
 
         results = []
         for i, idx in enumerate(indices[0]):
             if idx < len(self.documents):
-                distance = float(distances[0][i])
-                similarity = 1 / (1 + distance)
+                # Inner product of unit vectors is cosine similarity in [-1, 1].
+                similarity = float(scores[0][i])
+                distance = 1.0 - similarity
 
                 if similarity >= threshold:
                     doc = self.documents[idx]
