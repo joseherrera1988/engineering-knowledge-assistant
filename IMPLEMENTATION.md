@@ -23,8 +23,8 @@ A **production-ready Retrieval-Augmented Generation (RAG) system** that combines
 - **FAISS Integration**: Fast similarity search using Facebook's FAISS
 - **Multiple Retrieval Methods**:
   - Basic semantic search
-  - Semantic search with reranking
-  - Hybrid retrieval with filtering
+  - Semantic search with term-overlap reranking
+  - Retrieval with source filtering
 - **Flexible Embeddings**: 
   - Uses sentence-transformers when available
   - Falls back to hash-based embeddings for offline use
@@ -34,7 +34,7 @@ A **production-ready Retrieval-Augmented Generation (RAG) system** that combines
 **Key Classes:**
 - `FAISSVectorStore`: FAISS-based vector indexing
 - `SimpleEmbeddingModel`: Fallback for offline environments
-- `HybridRetriever`: Combined search strategies
+- `HybridRetriever`: Vector similarity with term-overlap reranking and source filtering (not a BM25/lexical hybrid)
 - `RetrievalResult`: Structured result representation
 
 ### 3. **RAG Agent with Tools** (`rag_agent.py` - 9.5KB)
@@ -163,16 +163,19 @@ API Documentation (400 lines)
   → 12 semantic chunks with context preservation
 ```
 
-### Hybrid Retrieval
+### Term-Overlap Reranking
 ```
 "What is FAISS?"
   ↓
 Vector Similarity: [0.89, 0.81, 0.75, 0.68, 0.62]
-Keyword Match:    [0.60, 0.85, 0.40, 0.50, 0.95]
+Term Overlap:     [0.60, 0.85, 0.40, 0.50, 0.95]
 Combined Score:   [0.78, 0.83, 0.62, 0.61, 0.73]
 After Rerank:     [2, 1, 5, 4, 3]
 Final Top-3:      [Docs 2, 1, 5]
 ```
+
+The combined score is `0.7 * vector_similarity + 0.3 * term_overlap`; the term
+overlap is a query/document token-overlap fraction, not a BM25 or lexical index.
 
 ### Tool Selection
 ```
