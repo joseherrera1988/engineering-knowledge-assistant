@@ -67,3 +67,29 @@ def evaluate(
         "k": k,
         "num_cases": len(cases),
     }
+
+
+def build_sample_store() -> FAISSVectorStore:
+    """Index the generated sample docs so the harness can run standalone."""
+    import tempfile
+
+    from ingestion import DocumentIngester, create_sample_documents
+
+    docs_dir = tempfile.mkdtemp()
+    create_sample_documents(docs_dir)
+    documents = DocumentIngester(chunk_size=512, overlap=100).ingest_directory(docs_dir)
+    store = FAISSVectorStore()
+    store.add_documents(documents)
+    return store
+
+
+def main() -> None:
+    """Run the gold set over the sample docs and print recall@k."""
+    store = build_sample_store()
+    for k in (1, 3, 5):
+        metrics = evaluate(store, GOLD_SET, k=k)
+        print(f"recall@{metrics['k']}: {metrics['recall_at_k']:.3f}  (n={metrics['num_cases']})")
+
+
+if __name__ == "__main__":
+    main()
