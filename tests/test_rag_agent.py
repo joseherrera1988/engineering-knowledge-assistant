@@ -95,6 +95,13 @@ def test_select_tool_routing() -> None:
     assert agent._select_tool("What is X?") == "question_answering"
 
 
+def test_select_tool_does_not_treat_query_word_as_sql() -> None:
+    """Natural questions containing 'query' or 'database' are Q&A, not SQL generation."""
+    agent = RAGAgent(_store_with_docs(), client=_FakeClient())
+    assert agent._select_tool("How do I query the documentation?") == "question_answering"
+    assert agent._select_tool("What database does the system use?") == "question_answering"
+
+
 class _BoomClient:
     def __init__(self) -> None:
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._boom))
