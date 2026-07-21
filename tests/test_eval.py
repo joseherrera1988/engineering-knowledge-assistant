@@ -54,6 +54,28 @@ def test_gold_set_is_non_empty() -> None:
     assert all(isinstance(c, EvalCase) for c in GOLD_SET)
 
 
+def test_eval_harness_main_prints_recall(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`python eval_harness.py` should build a store and print recall numbers."""
+    import eval_harness
+
+    store = _store_with(
+        [
+            Document(content="bearer token authentication", source="api_docs.md", chunk_id=0),
+            Document(content="system architecture services", source="architecture.md", chunk_id=1),
+            Document(content="documents table columns", source="database_schema.md", chunk_id=2),
+            Document(content="faiss index build", source="vector_search.py", chunk_id=3),
+        ]
+    )
+    monkeypatch.setattr(eval_harness, "build_sample_store", lambda: store)
+
+    eval_harness.main()
+
+    out = capsys.readouterr().out.lower()
+    assert "recall@" in out
+
+
 def test_sample_docs_meet_recall_floor(tmp_path: Path) -> None:
     """Integration: sample docs + gold set must clear the recall floor."""
     docs_dir = tmp_path / "sample_docs"
