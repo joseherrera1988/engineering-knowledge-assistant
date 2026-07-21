@@ -4,12 +4,14 @@ FAISS-based semantic search with source tracking
 """
 
 import hashlib
-import pickle
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import faiss
 import numpy as np
+
+from ingestion import Document
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -188,8 +190,8 @@ class FAISSVectorStore:
 
         faiss.write_index(self.index, f"{path}/index.faiss")
 
-        with open(f"{path}/documents.pkl", "wb") as f:
-            pickle.dump(self.documents, f)
+        with open(f"{path}/documents.json", "w", encoding="utf-8") as f:
+            json.dump([asdict(doc) for doc in self.documents], f)
 
         with open(f"{path}/model_info.txt", "w") as f:
             f.write(f"embedding_dim: {self.embedding_dim}\n")
@@ -201,8 +203,8 @@ class FAISSVectorStore:
         """Load index and metadata from disk"""
         self.index = faiss.read_index(f"{path}/index.faiss")
 
-        with open(f"{path}/documents.pkl", "rb") as f:
-            self.documents = pickle.load(f)
+        with open(f"{path}/documents.json", encoding="utf-8") as f:
+            self.documents = [Document(**d) for d in json.load(f)]
 
         print(f"✓ Loaded {len(self.documents)} documents from {path}")
 

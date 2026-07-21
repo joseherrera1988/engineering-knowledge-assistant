@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import faiss
@@ -129,6 +130,19 @@ def test_save_and_load_roundtrip(tmp_path: Path) -> None:
     assert len(s2.documents) == 3
     assert s2.index is not None
     assert s2.index.ntotal == 3
+
+
+def test_save_writes_json_not_pickle(tmp_path: Path) -> None:
+    s = _store()
+    s.add_documents(_docs())
+    s.save(str(tmp_path))
+
+    assert (tmp_path / "documents.json").exists()
+    assert not (tmp_path / "documents.pkl").exists()
+
+    data = json.loads((tmp_path / "documents.json").read_text(encoding="utf-8"))
+    assert len(data) == 3
+    assert data[0]["content"] and data[0]["source"]
 
 
 def test_reranking_returns_topk() -> None:
