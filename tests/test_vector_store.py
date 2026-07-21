@@ -27,13 +27,16 @@ def _docs() -> list[Document]:
 
 
 def _store() -> FAISSVectorStore:
-    s = FAISSVectorStore.__new__(FAISSVectorStore)
-    s.model = SimpleEmbeddingModel()
-    s.embedding_dim = 384
-    s.index = None
-    s.documents = []
-    s.use_gpu = False
+    s = FAISSVectorStore(model=SimpleEmbeddingModel())
     return s
+
+
+def test_constructor_accepts_injected_model() -> None:
+    """An embedding model can be injected, so tests need no SentenceTransformer download."""
+    m = SimpleEmbeddingModel()
+    s = FAISSVectorStore(model=m)
+    assert s.model is m
+    assert s.embedding_dim == 384
 
 
 def test_simple_embedding_is_deterministic() -> None:
@@ -188,12 +191,7 @@ def test_filter_returns_k_even_when_source_ranks_below_overfetch_window() -> Non
         angles[t] = 1.4 + 0.01 * i
         docs.append(Document(content=t, source="target.md", chunk_id=100 + i))
 
-    s = FAISSVectorStore.__new__(FAISSVectorStore)
-    s.model = _AngleModel(angles)
-    s.embedding_dim = 2
-    s.index = None
-    s.documents = []
-    s.use_gpu = False
+    s = FAISSVectorStore(model=_AngleModel(angles))
     s.add_documents(docs)
 
     h = HybridRetriever(s)

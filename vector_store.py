@@ -19,6 +19,15 @@ except ImportError:
     HAS_SENTENCE_TRANSFORMERS = False
 
 
+def _embedding_dim(model: Any) -> int:
+    """Read an embedding model's output dimension across the two method names
+    used by SentenceTransformer and the fallback model."""
+    get_dim = getattr(model, "get_embedding_dimension", None)
+    if get_dim is None:
+        get_dim = model.get_sentence_embedding_dimension
+    return int(get_dim())
+
+
 @dataclass
 class RetrievalResult:
     """Result from semantic search"""
@@ -64,17 +73,20 @@ class SimpleEmbeddingModel:
 class FAISSVectorStore:
     """FAISS-based vector store for semantic search"""
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2", use_gpu: bool = False) -> None:
+    def __init__(
+        self,
+        model_name: str = "all-MiniLM-L6-v2",
+        use_gpu: bool = False,
+        model: Any | None = None,
+    ) -> None:
         self.model: Any
-        if HAS_SENTENCE_TRANSFORMERS:
+        if model is not None:
+            self.model = model
+            self.embedding_dim = _embedding_dim(model)
+        elif HAS_SENTENCE_TRANSFORMERS:
             try:
                 self.model = SentenceTransformer(model_name)
-                get_dim = getattr(
-                    self.model,
-                    "get_embedding_dimension",
-                    self.model.get_sentence_embedding_dimension,
-                )
-                self.embedding_dim = get_dim()
+                self.embedding_dim = _embedding_dim(self.model)
             except Exception:
                 print("⚠️ Using fallback embedding model")
                 self.model = SimpleEmbeddingModel()
