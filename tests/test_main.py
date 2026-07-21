@@ -27,7 +27,7 @@ def test_initialize_system_creates_docs_and_index(
 
     assert docs.exists() and any(docs.iterdir())
     assert (index / "index.faiss").exists()
-    assert (index / "documents.pkl").exists()
+    assert (index / "documents.json").exists()
     assert len(documents) > 0
     assert vector_store.index.ntotal == len(documents)
 
