@@ -187,6 +187,17 @@ def format_response(response: Any) -> None:
     format_sources(response)
 
 
+def stream_answer(stream: Any) -> bool:
+    """Write a streaming answer, surfacing an LLM failure as an error message
+    instead of a raw traceback. Returns True if the stream completed."""
+    try:
+        st.write_stream(stream)
+        return True
+    except Exception as e:
+        st.error(f"The language model request failed: {e}")
+        return False
+
+
 # ============================================================================
 # SIDEBAR
 # ============================================================================
@@ -317,8 +328,8 @@ else:
             if question:
                 stream = st.session_state.agent.query_stream(question, k=retrieval_k)
                 st.markdown("### Answer")
-                st.write_stream(stream)
-                format_sources(stream)
+                if stream_answer(stream):
+                    format_sources(stream)
             else:
                 st.warning("Please enter a question")
 
@@ -346,8 +357,8 @@ else:
                     full_query = f"Summarize the following: {summary_query}"
                     stream = st.session_state.agent.query_stream(full_query, k=retrieval_k)
                     st.markdown("### Answer")
-                    st.write_stream(stream)
-                    format_sources(stream)
+                    if stream_answer(stream):
+                        format_sources(stream)
                 else:
                     st.warning("Please enter what to summarize")
 
@@ -372,8 +383,8 @@ else:
                 full_query = f"Generate SQL for: {sql_request}"
                 stream = st.session_state.agent.query_stream(full_query, k=retrieval_k)
                 st.markdown("### Answer")
-                st.write_stream(stream)
-                format_sources(stream)
+                if stream_answer(stream):
+                    format_sources(stream)
             else:
                 st.warning("Please describe your query")
 
@@ -407,7 +418,7 @@ else:
                 stream = st.session_state.agent.multi_turn_conversation_stream(user_message)
                 st.markdown(f"**You:** {user_message}")
                 st.markdown("**Assistant:**")
-                st.write_stream(stream)
+                stream_answer(stream)
             else:
                 st.warning("Please enter a message")
 
