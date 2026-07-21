@@ -46,14 +46,29 @@ def test_ingest_python_splits_on_defs(tmp_path: Path) -> None:
     assert any("beta" in c.content for c in chunks)
 
 
-def test_ingest_directory_assigns_unique_ids(tmp_path: Path) -> None:
+def test_ingest_directory_chunks_unique_by_source_and_id(tmp_path: Path) -> None:
     (tmp_path / "a.md").write_text("# A\nbody\n", encoding="utf-8")
     (tmp_path / "b.txt").write_text("just text content here.", encoding="utf-8")
     (tmp_path / "skip.bin").write_text("ignored", encoding="utf-8")
     chunks = DocumentIngester().ingest_directory(str(tmp_path))
-    ids = [c.chunk_id for c in chunks]
-    assert len(ids) == len(set(ids))
+    pairs = [(c.source, c.chunk_id) for c in chunks]
+    assert len(pairs) == len(set(pairs))
     assert all(not c.source.endswith(".bin") for c in chunks)
+
+
+def test_ingest_directory_preserves_per_file_chunk_indices(tmp_path: Path) -> None:
+    """chunk_id is a per-file index, so every file's chunks start at 0."""
+    (tmp_path / "a.md").write_text("# A\nalpha body\n", encoding="utf-8")
+    (tmp_path / "b.txt").write_text("beta text content here.", encoding="utf-8")
+    chunks = DocumentIngester().ingest_directory(str(tmp_path))
+
+    by_source: dict[str, list[int]] = {}
+    for c in chunks:
+        by_source.setdefault(c.source, []).append(c.chunk_id)
+
+    assert len(by_source) == 2
+    for ids in by_source.values():
+        assert min(ids) == 0
 
 
 def test_ingest_file_missing_returns_empty(tmp_path: Path) -> None:

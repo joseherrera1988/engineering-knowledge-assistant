@@ -31,17 +31,17 @@ class DocumentIngester:
         self.overlap = overlap
 
     def ingest_directory(self, directory: str) -> list[Document]:
-        """Ingest all documents from a directory"""
+        """Ingest all documents from a directory.
+
+        Each chunk keeps the per-file chunk_id assigned during ingestion, so a
+        document is identified by the (source, chunk_id) pair rather than a
+        global counter that would erase per-file indices.
+        """
         documents = []
-        doc_id = 0
 
         for file_path in Path(directory).rglob("*"):
             if file_path.suffix.lower() in [".txt", ".md", ".py", ".js", ".sql"]:
-                chunks = self.ingest_file(str(file_path))
-                for chunk in chunks:
-                    chunk.chunk_id = doc_id
-                    documents.append(chunk)
-                    doc_id += 1
+                documents.extend(self.ingest_file(str(file_path)))
 
         return documents
 
