@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import faiss
@@ -130,6 +131,20 @@ def test_save_and_load_roundtrip(tmp_path: Path) -> None:
     assert len(s2.documents) == 3
     assert s2.index is not None
     assert s2.index.ntotal == 3
+
+
+def test_save_logs_via_logging_without_emoji(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Status goes through logging (not print), and log text is emoji-free so it
+    can't crash a cp1252 Windows console."""
+    s = _store()
+    s.add_documents(_docs())
+    with caplog.at_level(logging.INFO, logger="vector_store"):
+        s.save(str(tmp_path))
+    messages = " ".join(r.message for r in caplog.records)
+    assert "saved" in messages.lower()
+    assert "✓" not in messages and "⚠" not in messages
 
 
 def test_save_writes_json_not_pickle(tmp_path: Path) -> None:
