@@ -103,6 +103,34 @@ def test_qa_tab_streams_answer_via_agent() -> None:
     assert agent.query_stream.call_args.args[0] == "what is the answer?"
 
 
+class _RaisingChunks:
+    def __iter__(self) -> _RaisingChunks:
+        return self
+
+    def __next__(self) -> str:
+        raise RuntimeError("api exploded")
+
+
+def test_qa_tab_shows_error_instead_of_traceback_when_llm_fails() -> None:
+    at = _new_app()
+    agent = MagicMock()
+    agent.query_stream.return_value = StreamingResponse(
+        _chunks=_RaisingChunks(),
+        sources=[],
+        tool_used="question_answering",
+        confidence=0.0,
+    )
+    _seed_loaded_state(at, agent)
+    at.run()
+    next(t for t in at.text_input if t.key == "qa_question").set_value("boom?")
+    next(b for b in at.button if b.label == "Search & Answer").click()
+    at.run()
+
+    # A raised LLM error must be surfaced as an st.error message, not an app crash.
+    assert not at.exception
+    assert any("failed" in e.value.lower() for e in at.error)
+
+
 def test_qa_tab_warns_on_empty_question() -> None:
     at = _new_app()
     agent = _seed_loaded_state(at)
