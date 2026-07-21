@@ -44,9 +44,7 @@ GOLD_SET: list[EvalCase] = [
 ]
 
 
-def compute_recall_at_k(
-    store: FAISSVectorStore, case: EvalCase, k: int = 5
-) -> float:
+def compute_recall_at_k(store: FAISSVectorStore, case: EvalCase, k: int = 5) -> float:
     """Return 1.0 if any retrieved doc's source matches an expected substring, else 0.0."""
     results = store.semantic_search_with_reranking(case.query, k=max(k, k + 1), rerank_top_k=k)
     expected = [s.lower() for s in case.expected_sources]
