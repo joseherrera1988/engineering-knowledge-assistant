@@ -229,7 +229,12 @@ class FAISSVectorStore:
 
 
 class HybridRetriever:
-    """Combines semantic and keyword-based retrieval"""
+    """Vector-similarity retrieval with an optional term-overlap reranking pass
+    and source filtering.
+
+    This is not a BM25 or lexical hybrid: the keyword signal is a lightweight
+    query/document token-overlap score blended into the vector ranking.
+    """
 
     def __init__(self, vector_store: FAISSVectorStore):
         self.vector_store = vector_store
