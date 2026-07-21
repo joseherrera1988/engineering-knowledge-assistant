@@ -17,12 +17,7 @@ class _FakeUpload:
 
 
 def _empty_store() -> FAISSVectorStore:
-    s = FAISSVectorStore.__new__(FAISSVectorStore)
-    s.model = SimpleEmbeddingModel()
-    s.embedding_dim = 384
-    s.index = None
-    s.documents = []
-    s.use_gpu = False
+    s = FAISSVectorStore(model=SimpleEmbeddingModel())
     return s
 
 

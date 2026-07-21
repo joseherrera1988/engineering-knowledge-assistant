@@ -11,12 +11,7 @@ from vector_store import FAISSVectorStore, SimpleEmbeddingModel
 
 
 def _store_with_docs() -> FAISSVectorStore:
-    s = FAISSVectorStore.__new__(FAISSVectorStore)
-    s.model = SimpleEmbeddingModel()
-    s.embedding_dim = 384
-    s.index = None
-    s.documents = []
-    s.use_gpu = False
+    s = FAISSVectorStore(model=SimpleEmbeddingModel())
     s.add_documents(
         [
             Document(content="FAISS provides vector similarity search.", source="a.md", chunk_id=0),
@@ -73,12 +68,7 @@ def test_query_routes_sql() -> None:
 
 
 def test_query_no_results() -> None:
-    empty = FAISSVectorStore.__new__(FAISSVectorStore)
-    empty.model = SimpleEmbeddingModel()
-    empty.embedding_dim = 384
-    empty.index = None
-    empty.documents = []
-    empty.use_gpu = False
+    empty = FAISSVectorStore(model=SimpleEmbeddingModel())
     fake = _FakeClient()
     agent = RAGAgent(empty, client=fake)
     response = agent.query("anything")
@@ -189,12 +179,7 @@ def test_query_stream_yields_chunks_and_aggregates_answer() -> None:
 
 
 def test_query_stream_no_results_returns_empty_stream() -> None:
-    empty = FAISSVectorStore.__new__(FAISSVectorStore)
-    empty.model = SimpleEmbeddingModel()
-    empty.embedding_dim = 384
-    empty.index = None
-    empty.documents = []
-    empty.use_gpu = False
+    empty = FAISSVectorStore(model=SimpleEmbeddingModel())
     fake = _FakeStreamClient(["unused"])
 
     agent = RAGAgent(empty, client=fake)

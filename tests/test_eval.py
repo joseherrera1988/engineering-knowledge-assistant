@@ -10,12 +10,7 @@ from vector_store import FAISSVectorStore, SimpleEmbeddingModel
 
 
 def _store_with(docs: list[Document]) -> FAISSVectorStore:
-    s = FAISSVectorStore.__new__(FAISSVectorStore)
-    s.model = SimpleEmbeddingModel()
-    s.embedding_dim = 384
-    s.index = None
-    s.documents = []
-    s.use_gpu = False
+    s = FAISSVectorStore(model=SimpleEmbeddingModel())
     s.add_documents(docs)
     return s
 

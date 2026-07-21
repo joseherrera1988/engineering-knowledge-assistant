@@ -15,12 +15,7 @@ APP_PATH = str(Path(__file__).resolve().parent.parent / "app.py")
 
 def _build_saved_index(target_dir: Path) -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
-    vs = FAISSVectorStore.__new__(FAISSVectorStore)
-    vs.model = SimpleEmbeddingModel()
-    vs.embedding_dim = 384
-    vs.index = None
-    vs.documents = []
-    vs.use_gpu = False
+    vs = FAISSVectorStore(model=SimpleEmbeddingModel())
     vs.add_documents([Document(content="hello world", source="a.md", chunk_id=0)])
     vs.save(str(target_dir))
 
