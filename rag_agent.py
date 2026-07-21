@@ -123,7 +123,10 @@ class RAGAgent:
         q = query.lower()
         if any(word in q for word in ["summarize", "summary", "overview"]):
             return "summarization"
-        if any(word in q for word in ["sql", "query", "database"]):
+        # SQL generation is a deliberate action; require an explicit SQL signal.
+        # The bare words "query"/"database" also occur in ordinary questions
+        # ("how do I query the docs?"), so they no longer route here.
+        if "sql" in q or "select statement" in q:
             return "sql_generation"
         return "question_answering"
 
