@@ -3,10 +3,13 @@ Document Ingestion Pipeline
 Handles PDF, Markdown, and text files with intelligent chunking
 """
 
+import logging
 import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -48,7 +51,7 @@ class DocumentIngester:
             with open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
         except Exception as e:
-            print(f"Error reading {file_path}: {e}")
+            logger.error("Error reading %s: %s", file_path, e)
             return []
 
         file_type = Path(file_path).suffix.lower()
@@ -513,4 +516,4 @@ class VectorSearch:
     with open(f"{directory}/vector_search.py", "w", encoding="utf-8") as f:
         f.write(python_code)
 
-    print(f"✓ Sample documents created in {directory}")
+    logger.info("Sample documents created in %s", directory)

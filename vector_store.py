@@ -5,6 +5,7 @@ FAISS-based semantic search with source tracking
 
 import hashlib
 import json
+import logging
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -12,6 +13,8 @@ import faiss
 import numpy as np
 
 from ingestion import Document
+
+logger = logging.getLogger(__name__)
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -90,7 +93,7 @@ class FAISSVectorStore:
                 self.model = SentenceTransformer(model_name)
                 self.embedding_dim = _embedding_dim(self.model)
             except Exception:
-                print("⚠️ Using fallback embedding model")
+                logger.warning("Using fallback embedding model")
                 self.model = SimpleEmbeddingModel()
                 self.embedding_dim = 384
         else:
@@ -104,10 +107,10 @@ class FAISSVectorStore:
     def add_documents(self, documents: list[Any]) -> None:
         """Add documents to the vector store"""
         if not documents:
-            print("No documents to add")
+            logger.info("No documents to add")
             return
 
-        print(f"Encoding {len(documents)} documents...")
+        logger.info("Encoding %d documents", len(documents))
 
         embeddings = self.model.encode(
             [doc.content for doc in documents], convert_to_numpy=True, show_progress_bar=True
@@ -122,7 +125,7 @@ class FAISSVectorStore:
         faiss.normalize_L2(embeddings)
         self.index.add(embeddings)
         self.documents.extend(documents)
-        print(f"✓ Index now contains {self.index.ntotal} documents")
+        logger.info("Index now contains %d documents", self.index.ntotal)
 
     def search(self, query: str, k: int = 5, threshold: float = -1.0) -> list[RetrievalResult]:
         """Search for similar documents.
@@ -197,7 +200,7 @@ class FAISSVectorStore:
             f.write(f"embedding_dim: {self.embedding_dim}\n")
             f.write(f"total_docs: {len(self.documents)}\n")
 
-        print(f"✓ Vector store saved to {path}")
+        logger.info("Vector store saved to %s", path)
 
     def load(self, path: str) -> None:
         """Load index and metadata from disk"""
@@ -206,7 +209,7 @@ class FAISSVectorStore:
         with open(f"{path}/documents.json", encoding="utf-8") as f:
             self.documents = [Document(**d) for d in json.load(f)]
 
-        print(f"✓ Loaded {len(self.documents)} documents from {path}")
+        logger.info("Loaded %d documents from %s", len(self.documents), path)
 
     def get_document_stats(self) -> dict[str, Any]:
         """Get statistics about the vector store"""
