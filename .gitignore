@@ -20,6 +20,7 @@ rag_index/
 .DS_Store
 .vscode/
 .idea/
+bash.exe.stackdump
 
 # Project-local instructions (not for upstream)
 CLAUDE.md
