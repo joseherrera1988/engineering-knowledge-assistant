@@ -21,7 +21,7 @@ This project sets out to answer the question:
 ## What This Repository Contains
 
 - A document ingestion pipeline that chunks Markdown by headers, code by function/class boundaries, and plain text by sentences with overlap, preserving source-file and line-range metadata ([`ingestion.py`](ingestion.py)).
-- A FAISS-backed vector store with `sentence-transformers` embeddings (default `all-MiniLM-L6-v2`), an offline-mode hash-based fallback embedder, and a hybrid retriever that combines vector similarity with optional keyword reranking and source filtering ([`vector_store.py`](vector_store.py)).
+- A FAISS-backed vector store with `sentence-transformers` embeddings (default `all-MiniLM-L6-v2`), an offline-mode hash-based fallback embedder, and a retriever that ranks by vector similarity with an optional term-overlap reranking pass and source filtering ([`vector_store.py`](vector_store.py)). The keyword signal is a lightweight token-overlap score, not a BM25 or lexical index.
 - An LLM agent that performs lightweight tool selection (Q&A vs. summarization vs. SQL generation), supports streaming and multi-turn conversations, and falls back to a deterministic demo mode when no API key is configured ([`rag_agent.py`](rag_agent.py)).
 - A Streamlit UI with four tabs (Q&A, Summarize, SQL Query, Chat), source-attribution display with similarity scores, document upload, and persisted FAISS index reload ([`app.py`](app.py)).
 - A CLI entrypoint with four modes (`init`, `demo`, `ui`, `full`) covering indexing, scripted demo queries, the UI, and the end-to-end flow ([`main.py`](main.py)).
@@ -122,7 +122,7 @@ See [`QUICKSTART.md`](QUICKSTART.md) for a fuller user-facing walkthrough and [`
 ```
 engineering-knowledge-assistant/
 ├── ingestion.py            # document ingestion + smart chunking
-├── vector_store.py         # FAISS vector store, embeddings, hybrid retriever
+├── vector_store.py         # FAISS vector store, embeddings, retriever
 ├── rag_agent.py            # LLM agent with tool selection (Q&A / summarize / SQL)
 ├── app.py                  # Streamlit UI (Q&A / Summarize / SQL / Chat tabs)
 ├── main.py                 # CLI entrypoint (--mode init / demo / ui / full)
