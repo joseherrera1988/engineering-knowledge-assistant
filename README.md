@@ -1,82 +1,49 @@
-# Engineering Knowledge Assistant: A Retrieval-First RAG System
+# Engineering Knowledge Assistant: RAG System
 
 ## What This Is
 
-This project builds a Retrieval-Augmented Generation (RAG) system that answers technical questions over engineering documentation by combining FAISS-based semantic search with LLM-powered reasoning and source attribution.
+This project builds a retrieval-augmented generation (RAG) system that answers technical questions over engineering documentation by combining FAISS-based semantic search with large language model (LLM)-powered reasoning and source attribution.
 
-It focuses on a core production challenge in LLM systems: **answering technical questions accurately without hallucination, with citations the reader can verify**.
+It focuses on a core production challenge in LLM systems: answering technical questions accurately without hallucination, with citations the reader can verify.
 
 ## Why This Matters
 
 Internal engineering knowledge is fragmented across READMEs, schema docs, architecture notes, and code:
 
-- Engineers spend significant time searching through documentation that ideally should be accessible through a single query.
-- Unrefined LLMs often generate fluent responses but invent APIs, fields, and behaviors that do not exist.
-- An unsubstantiated answer in a technical context can be more detrimental than no answer, as it contains load-bearing misinformation.
+1. Engineers spend significant time searching through documentation that ideally should be accessible through a single query.
+2. Unrefined LLMs often generate fluent responses but invent APIs, fields, and behaviors that do not exist.
+3. An unsubstantiated answer in a technical context can be more detrimental than no answer, as it contains load-bearing misinformation.
 
 This project sets out to answer the question:
 
-> **Can a small, well-instrumented retrieval pipeline answer technical questions accurately, with citations, fast enough to be useful?**
+**Can a small, well-instrumented retrieval pipeline answer technical questions accurately, with citations, fast enough to be useful?**
 
 ## What This Repository Contains
 
-- A document ingestion pipeline that chunks Markdown by headers, code by function/class boundaries, and plain text by sentences with overlap, preserving source-file and line-range metadata ([`ingestion.py`](ingestion.py)).
-- A FAISS-backed vector store with `sentence-transformers` embeddings (default `all-MiniLM-L6-v2`), an offline-mode hash-based fallback embedder, and a retriever that ranks by vector similarity with an optional term-overlap reranking pass and source filtering ([`vector_store.py`](vector_store.py)). The keyword signal is a lightweight token-overlap score, not a BM25 or lexical index.
-- An LLM agent that performs lightweight tool selection (Q&A vs. summarization vs. SQL generation), supports streaming and multi-turn conversations, and falls back to a deterministic demo mode when no API key is configured ([`rag_agent.py`](rag_agent.py)).
-- A Streamlit UI with four tabs (Q&A, Summarize, SQL Query, Chat), source-attribution display with similarity scores, document upload, and persisted FAISS index reload ([`app.py`](app.py)).
-- A CLI entrypoint with four modes (`init`, `demo`, `ui`, `full`) covering indexing, scripted demo queries, the UI, and the end-to-end flow ([`main.py`](main.py)).
-- A small retrieval evaluation harness with five hand-written gold cases scored by `recall@k` ([`eval_harness.py`](eval_harness.py)).
-- Unit and integration tests across all eight core modules ([`tests/`](tests/)).
-- Long-form technical and user documentation ([`IMPLEMENTATION.md`](IMPLEMENTATION.md), [`QUICKSTART.md`](QUICKSTART.md)).
+1. A document ingestion pipeline that chunks Markdown by headers, code by function/class boundaries, and plain text by sentences with overlap, preserving source-file and line-range metadata ([`ingestion.py`](ingestion.py)).
+2. A FAISS-backed vector store with `sentence-transformers` embeddings (default `all-MiniLM-L6-v2`), an offline-mode hash-based fallback embedder, and a retriever that ranks by vector similarity with an optional term-overlap reranking pass and source filtering ([`vector_store.py`](vector_store.py)). The keyword signal is a lightweight token-overlap score, not a BM25 or lexical index.
+3. An LLM agent that performs lightweight tool selection (Q&A vs. summarization vs. SQL generation), supports streaming and multi-turn conversations, and falls back to a deterministic demo mode when no API key is configured ([`rag_agent.py`](rag_agent.py)).
+4. A Streamlit UI with four tabs (Q&A, Summarize, SQL Query, Chat), source-attribution display with similarity scores, document upload, and persisted FAISS index reload ([`app.py`](app.py)).
+5. A CLI entrypoint with four modes (`init`, `demo`, `ui`, `full`) covering indexing, scripted demo queries, the UI, and the end-to-end flow ([`main.py`](main.py)).
+6. A small retrieval evaluation harness with five hand-written gold cases scored by `recall@k` ([`eval_harness.py`](eval_harness.py)).
+7. Unit and integration tests across all eight core modules ([`tests/`](tests/)).
+8. Long-form technical and user documentation ([`IMPLEMENTATION.md`](IMPLEMENTATION.md), [`QUICKSTART.md`](QUICKSTART.md)).
 
 ## Why Retrieval-First
 
-The hardest part of building LLM-backed systems for technical content is keeping answers grounded. This repository is built on the principle that **every answer must point back to a source the reader can open**, and that retrieval quality is the upstream lever.
-
-Three concrete commitments fall out of that:
-
-- **Chunk by structure, not by character count alone.** Splitting Markdown on headers and code on function/class boundaries preserves the unit a reader would actually want to see cited.
-- **Citations are first-class outputs, not a UI afterthought.** Every `AgentResponse` carries source files, excerpts, and similarity scores; the UI surfaces them next to the answer.
-- **Retrieval is independently testable.** `eval_harness.py` scores retrieval directly (recall@k against expected source substrings) so retrieval regressions are visible without going through the LLM.
-
-## Current Status
-
-**Completed:**
-
-- End-to-end pipeline working: ingestion → FAISS index → retrieval (with optional reranking and source filters) → LLM agent → Streamlit UI, with persisted index reload across sessions.
-- Tool-selecting agent: Q&A, summarization, and SQL-from-schema, each with source attribution; streaming and multi-turn variants implemented.
-- Offline-friendly fallback path: deterministic hash-seeded embeddings and a canned demo response generator so the system runs without network or API keys.
-- Five-case retrieval gold set with `recall@k` scoring ([`eval_harness.py`](eval_harness.py)).
-- Unit/integration tests across all eight core modules under [`tests/`](tests/), wired up with `pytest`, `mypy`, and `ruff` via [`pyproject.toml`](pyproject.toml).
-
-**Planned:**
-
-- Expand the retrieval gold set well beyond five cases, stratified by query type (factoid, summarization, schema-grounded SQL, multi-source synthesis), and report `recall@k`, `MRR`, and per-stratum accuracy.
-- Retrieval ablations: chunk size, chunk overlap, embedding model (`all-MiniLM-L6-v2` vs. `all-mpnet-base-v2`), and reranking on/off, scored on the expanded gold set.
-- Latency benchmarks for indexing throughput, retrieval p50/p95, and end-to-end response time.
-- Model comparison (`gpt-4o-mini` vs. `claude-haiku-4-5`) on answer quality and citation faithfulness, using the same paired-comparison methodology used in the sibling drive-thru-voice-processing project.
-- Index persistence and scaling work: incremental updates, larger corpora, and a measured memory/latency curve.
+A primary challenge in developing large language model (LLM)-backed systems for technical content is ensuring that answers remain grounded in verifiable sources. This repository does just that: every response references an accessible source, with retrieval quality as the main determinant of system reliability.
 
 ## Results
 
-The current evaluation surface is intentionally small. `eval_harness.py` defines five hand-authored cases covering API authentication, architecture, schema, FAISS implementation, and rate-limiting, and scores binary `recall@k` against expected source substrings.
+The current evaluation surface remains intentionally limited. The script `eval_harness.py` specifies five manually constructed cases addressing API authentication, architecture, schema, FAISS implementation, and rate-limiting, and evaluates binary recall@k against predefined source substrings.
 
-Run it locally to populate this section against your own configuration:
+Run the script locally to generate results for this section based on the specific configuration in use:
 
 ```bash
 python eval_harness.py
 ```
 
-This is a smoke-test gold set, not a benchmark. Expanding it (and reporting per-query and per-stratum metrics, latency, and a paired model comparison) is the first item on the **Planned** list above. The README will grow real result tables once those probes exist; until then, claiming numbers here would be theatre.
-
-## Validation
-
-Validation today is limited to two surfaces:
-
-- The unit and integration tests under [`tests/`](tests/) (eight modules covered, run with `pytest`).
-- The five-case retrieval harness in [`eval_harness.py`](eval_harness.py).
-
-Held-out sets, run-to-run variance probes, concurrency / rate-limit characterization, and end-to-end answer-quality probes are deliberately *not* claimed here because they don't exist in this repo yet. They are listed under **Planned**, and will get their own subsections once the probes ship — same shape as the validation work in the sibling [drive-thru-voice-processing](https://github.com/joseherrera1988/drive-thru-voice-processing) project.
+This set serves as a smoke-test gold set rather than a comprehensive benchmark. Expanding the evaluation, including reporting per-query and per-stratum metrics, latency, and conducting paired model comparisons, is the primary item on the planned improvements list. The README will present actual result tables after these probes are implemented. 
 
 ## Running the System
 
