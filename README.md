@@ -80,9 +80,9 @@ python -m pytest tests/
 python eval_harness.py
 ```
 
-The first run downloads the `sentence-transformers` model (~80 MB) and generates a small set of sample documents under `sample_docs/`. The persisted FAISS index lives under `rag_index/`; uploaded files land under `uploads/`. Without an API key the agent falls back to deterministic demo responses, which is enough to exercise retrieval and the UI end-to-end.
+During the initial execution, the `sentence-transformers` model (~80 MB) is downloaded and a small set of sample documents is generated in the `sample_docs/` directory. The persistent FAISS index is stored in `rag_index/`, while uploaded files are placed in `uploads/`. In the absence of an API key, the agent defaults to deterministic demo responses, which are sufficient to test retrieval and the user interface end-to-end.
 
-See [`QUICKSTART.md`](QUICKSTART.md) for a fuller user-facing walkthrough and [`IMPLEMENTATION.md`](IMPLEMENTATION.md) for the technical deep-dive on chunking, retrieval, and agent design.
+Refer to [`QUICKSTART.md`](QUICKSTART.md) for a comprehensive user-facing walkthrough and to [`IMPLEMENTATION.md`](IMPLEMENTATION.md) for a detailed technical explanation of chunking, retrieval, and agent design.
 
 ## Repository Structure
 
