@@ -17,11 +17,11 @@ python main.py --mode full
 
 ## What You Get
 
-✅ **4 Python Modules** - Production-ready, modular code
-✅ **Document Ingestion** - Smart chunking for multiple file types
-✅ **Vector Search** - FAISS-based semantic retrieval
-✅ **RAG Agent** - LLM-powered reasoning with multiple tools
-✅ **Streamlit UI** - Interactive web interface
+**4 Python Modules** - Production-ready, modular code
+**Document Ingestion** - Smart chunking for multiple file types
+**Vector Search** - FAISS-based semantic retrieval
+**RAG Agent** - LLM-powered reasoning with multiple tools
+**Streamlit UI** - Interactive web interface
 
 ## Running Different Modes
 
